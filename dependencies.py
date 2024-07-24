@@ -53,7 +53,9 @@ def get_current_user(
     db_token = get_token(db, jti)
     if db_token is None:
         raise credentials_exception
-    if db_token.expires_at < datetime.datetime.now(datetime.UTC):
+    if db_token.expires_at.replace(tzinfo=datetime.UTC) < datetime.datetime.now(
+        datetime.UTC
+    ):
         try:
             delete_token(db, jti)
         except SQLAlchemyError as e:
