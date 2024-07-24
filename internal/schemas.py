@@ -1,7 +1,7 @@
 from typing import Optional
 import uuid
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 from .enums import UserRoleType
 
@@ -33,8 +33,7 @@ class VendorProfileCreate(UserBase):
 
 
 class User(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     is_active: bool
-
-    class Config:
-        from_attributes = True
