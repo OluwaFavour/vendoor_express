@@ -1,5 +1,10 @@
+# files
 .env
+*.sqlite3
+*.db
+*.log
+
+# folders
 migrations/versions/
 __pycache__/
-*.log
 venv/
