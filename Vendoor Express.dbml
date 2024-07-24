@@ -1,0 +1,232 @@
+Enum "proof_of_identity" {
+  "passport"
+  "drivers_license"
+  "national_id"
+}
+
+Enum "shop_type" {
+  "products"
+  "services"
+  "both"
+}
+
+Enum "payment_method" {
+  "card"
+  "bank_transfer"
+  "payment_on_delivery"
+}
+
+Enum "order_status" {
+  "pending"
+  "processing"
+  "shipped"
+  "delivered"
+  "cancelled"
+}
+
+Table "users" {
+  "id" uuid [pk]
+  "full_name" varchar
+  "email" varchar [unique]
+  "phone_number" varchar [unique]
+  "hashed_password" varchar
+  "proof_of_identity" proof_of_identity
+  "proof_of_identity_image" varchar [note: 'URL, optional, length constraint']
+  "business_registration_certificate_image" varchar [note: 'URL, optional, length constraint']
+}
+
+Table "shops" {
+  "id" uuid [pk]
+  "name" varchar [unique]
+  "description" text
+  "type" shop_type
+  "category" varchar
+  "email" varchar
+  "phone_number" varchar
+  "logo" varchar [note: 'URL']
+  "user_id" uuid [unique]
+
+  Indexes {
+    (type, category)
+  }
+}
+
+Table "products" {
+  "id" uuid [pk]
+  "name" varchar
+  "description" text
+  "specifications" text
+  "packaging" text
+  "stock" int
+  "price" float
+  "category" varchar
+  "sub_category" varchar
+  "media" varchar [note: 'URL']
+  "created_at" timestamp [default: `now()`]
+  "updated_at" timestamp [default: `now()`]
+  "disabled" boolean [default: false]
+  "shop_id" uuid
+
+  Indexes {
+    (category, sub_category, updated_at, disabled, price)
+  }
+}
+
+Table "product_options" {
+  "id" uuid [pk]
+  "name" varchar
+  "value" varchar
+  "product_id" uuid
+
+  Indexes {
+    name, value
+  }
+}
+
+Table "product_reviews" {
+  "id" uuid [pk]
+  "rating" int [note: '1 to 5 constraint']
+  "comment" text
+  "images" varchar [note: 'URL']
+  "product_id" uuid
+  "created_at" timestamp [default: `now()`]
+  "user_id" uuid
+
+  Indexes {
+    (rating, product_id, created_at)
+  }
+}
+
+Table "orders" {
+  "id" uuid [pk]
+  "order_number" varchar [unique]
+  "created_at" timestamp [default: `now()`]
+  "payment_method" payment_method
+  "user_id" uuid
+  "card_id" uuid [note: 'optional']
+  "bank_transfer_id" uuid [note: 'optional']
+  "delivery_address_id" uuid
+
+  Indexes {
+    (created_at, payment_method)
+  }
+}
+
+Table "order_products" {
+  "id" uuid [pk]
+  "quantity" int
+  "product_id" uuid
+  "order_id" uuid
+  "status" order_status [default: "pending"]
+
+  Indexes {
+    (order_id, status)
+  }
+}
+
+Table "notifications" {
+  "id" uuid [pk]
+  "type" varchar
+  "title" varchar
+  "message" varchar
+  "order_id" uuid
+  "user_id" uuid
+}
+
+Table "saved_products" {
+  "id" uuid [pk]
+  "product_id" uuid
+  "user_id" uuid
+
+  Indexes {
+    (product_id, user_id) [unique]
+  }
+}
+
+Table "cart_products" {
+  "id" uuid [pk]
+  "quantity" int
+  "product_id" uuid
+  "user_id" uuid
+
+  Indexes {
+    (product_id, user_id) [unique]
+  }
+}
+
+Table "addresses" {
+  "id" uuid [pk]
+  "full_name" varchar
+  "address" varchar
+  "city" varchar
+  "state" varchar
+  "country" varchar [default: "Nigeria"]
+  "phone_number" varchar
+  "user_id" uuid
+}
+
+Table "default_addresses" {
+  "id" uuid [pk]
+  "address_id" uuid
+  "user_id" uuid [unique]
+}
+
+Table "cards" {
+  "id" uuid [pk]
+  "card_name" varchar
+  "hashed_card_number" varchar
+  "last_four" varchar
+  "expiry_date" varchar
+  "cvv" varchar
+  "user_id" uuid
+}
+
+Table "default_cards" {
+  "id" uuid [pk]
+  "card_id" uuid
+  "user_id" uuid [unique]
+}
+
+Ref:"users"."id" - "shops"."user_id" // A user can only have one shop
+
+Ref:"shops"."id" < "products"."shop_id" [delete: cascade, update: no action] // A shop can have many products
+
+Ref:"products"."id" < "product_options"."product_id" [delete: cascade, update: no action] // A product can have many product_options
+
+Ref:"products"."id" < "product_reviews"."product_id" [delete: cascade, update: no action] // A product can have many product_reviews
+
+Ref:"users"."id" < "product_reviews"."user_id" [delete: cascade, update: no action] // A user can write many product_reviews
+
+Ref:"users"."id" < "orders"."user_id" [delete: cascade, update: no action] // A user can make many orders
+
+Ref:"cards"."id" < "orders"."card_id" // A card can be used for many orders
+
+Ref:"shipping_addresses"."id" < "orders"."delivery_address_id" // A shipping_addresses can be used as the delivery address of many orders
+
+Ref:"order_products"."product_id" - "products"."id" // One order_product can only hold one product
+
+Ref:"orders"."id" < "order_products"."order_id" [delete: cascade, update: no action] // An order can hold many order_products
+
+Ref:"orders"."id" < "notifications"."order_id" // An order can generate many notifications
+
+Ref:"users"."id" < "notifications"."user_id" [delete: cascade, update: no action] // A user can have many notifications
+
+Ref:"saved_products"."product_id" - "products"."id" // A saved_product can only hold one product
+
+Ref:"users"."id" < "saved_products"."user_id" [delete: cascade, update: no action] // A user can have many saved_products
+
+Ref:"cart_products"."product_id" - "products"."id" // A cart_product can only hold one product
+
+Ref:"users"."id" < "cart_products"."user_id" [delete: cascade, update: no action] // A user can have many cart_products
+
+Ref:"users"."id" < "shipping_addresses"."user_id" [delete: cascade, update: no action] // A user can have many shipping_addresses
+
+Ref:"default_shipping_addresses"."shipping_address_id" - "shipping_addresses"."id" // Only one shipping_address can be default
+
+Ref:"users"."id" - "default_shipping_addresses"."user_id" // A user can only have one default shipping_address
+
+Ref:"users"."id" < "cards"."user_id" [delete: cascade, update: no action] // A user can have many cards
+
+Ref:"cards"."id" - "default_cards"."card_id" // Only one card can be default
+
+Ref:"users"."id" - "default_cards"."user_id" // A user can only have one default card

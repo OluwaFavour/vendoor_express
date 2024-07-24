@@ -1,0 +1,5 @@
+.env
+migrations/versions/
+__pycache__/
+*.log
+venv/
