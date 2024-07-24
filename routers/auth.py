@@ -1,9 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 import jwt
 from typing import Annotated, Any
-import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
