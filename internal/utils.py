@@ -47,7 +47,7 @@ def create_access_token(
     # Get the user from the database
     user = get_user_by_email(db, data["sub"])  # data["sub"] is the email
     # Store the token in the database
-    store_token(db, token_jti=to_encode["jti"], expires_at=expire, user=user)
+    store_token(db=db, token_jti=to_encode["jti"], expires_at=expire, user=user)
 
     return encoded_jwt
 
