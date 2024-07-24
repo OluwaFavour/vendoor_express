@@ -45,7 +45,10 @@ def login_for_access_token(
         }
     },
 )
-def logout(token: Annotated[str, Depends(oauth2_scheme)]):
+def logout(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(get_db)],
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -61,7 +64,7 @@ def logout(token: Annotated[str, Depends(oauth2_scheme)]):
         if jti is None:
             raise credentials_exception
         try:
-            delete_token(jti)
+            delete_token(db=db, token_jti=jti)
         except SQLAlchemyError as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -94,7 +97,7 @@ def logout_all(
     user: Annotated[UserModel, Depends(get_current_active_user)],
 ):
     try:
-        delete_user_tokens(db, user)
+        delete_user_tokens(db=db, user=user)
     except SQLAlchemyError as e:
         logger.error(f"Error deleting user tokens: {e}")
         raise HTTPException(
