@@ -151,3 +151,30 @@ def refresh_access_token(refresh_token: str, db: Session) -> tuple[str, str]:
     )
 
     return access_token, refresh_token
+
+
+def create_reset_token(
+    data: dict, db: Session, expires_delta: Optional[datetime.timedelta] = None
+) -> str:
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.datetime.now(datetime.UTC) + expires_delta
+    else:
+        expire = datetime.datetime.now(datetime.UTC) + datetime.timedelta(
+            minutes=settings.reset_token_expire_minutes
+        )
+    to_encode.update({"exp": expire})
+    to_encode.update({"jti": str(uuid.uuid4())})
+    encoded_jwt = jwt.encode(
+        to_encode, settings.secret_key, algorithm=settings.algorithm
+    )
+    # Store the token in the database
+    token_crud.store_token(
+        db=db,
+        token_jti=to_encode["jti"],
+        expires_at=expire,
+        user_id=uuid.UUID(data["sub"]),
+        token_type=TokenType.RESET_PASSWORD.value,
+    )
+
+    return encoded_jwt

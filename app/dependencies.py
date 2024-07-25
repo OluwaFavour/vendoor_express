@@ -1,4 +1,5 @@
 import datetime
+import smtplib
 import uuid
 
 from fastapi import Depends, HTTPException, status
@@ -13,6 +14,30 @@ from .db.session import SessionLocal
 from .db.models import User
 from .core.config import oauth2_scheme, settings
 from .core.debug import logger
+
+
+def get_smtp():
+    """Manage the SMTP connection by creating a new connection for each request"""
+    smtp = smtplib.SMTP(settings.smtp_host, settings.smtp_port)
+    try:
+        smtp.starttls()
+        smtp.login(settings.smtp_login, settings.smtp_password)
+    except smtplib.SMTPHeloError as e:
+        logger.error(f"Could not start TLS: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "Could not start TLS", "error": str(e)},
+        )
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"Could not authenticate: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "Could not authenticate", "error": str(e)},
+        )
+    try:
+        yield smtp
+    finally:
+        smtp.quit()
 
 
 def get_db():

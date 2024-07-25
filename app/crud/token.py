@@ -55,6 +55,11 @@ def delete_token(db: Session, token_jti: str) -> None:
     db.commit()
 
 
+def delete_token_by_type(db: Session, token_jti: str, token_type: str) -> None:
+    db.execute(delete(TokenModel).filter_by(jti=token_jti, token_type=token_type))
+    db.commit()
+
+
 def delete_user_tokens(db: Session, user: UserModel) -> None:
     user.tokens.clear()
     db.commit()

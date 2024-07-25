@@ -1,5 +1,14 @@
 import jwt
-import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from smtplib import (
+    SMTP,
+    SMTPRecipientsRefused,
+    SMTPSenderRefused,
+    SMTPDataError,
+    SMTPException,
+)
+from typing import Optional, Union
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -51,3 +60,53 @@ def handle_token_refresh(refresh_token: str, db: Session) -> dict[str, str]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error occurred while refreshing token: {e}",
         )
+
+
+def create_email_message(
+    subject: str, recipient: str, plain_text: str, html_text: Optional[str] = None
+) -> Union[MIMEText, MIMEMultipart]:
+    if html_text:
+        message = MIMEMultipart("alternative")
+        message.attach(MIMEText(plain_text, "plain"))
+        message.attach(MIMEText(html_text, "html"))
+    else:
+        message = MIMEText(plain_text, "plain")
+
+    message["Subject"] = subject
+    message["From"] = settings.from_email
+    message["To"] = recipient
+
+    return message
+
+
+def send_email(
+    smtp: SMTP, subject: str, recipient: str, plain_text: str, html_text: Optional[str]
+) -> None:
+    try:
+        message = create_email_message(subject, recipient, plain_text, html_text)
+        smtp.sendmail(settings.from_email, recipient, message.as_string())
+    except SMTPRecipientsRefused as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "Recipient refused", "error": str(e)},
+        )
+    except SMTPSenderRefused as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "Sender refused", "error": str(e)},
+        )
+    except SMTPDataError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "Data error", "error": str(e)},
+        )
+    except SMTPException as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Internal server error when sending mail",
+                "error": str(e),
+            },
+        )
+    else:
+        return None
