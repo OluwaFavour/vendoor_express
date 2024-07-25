@@ -25,10 +25,9 @@ def update_user(db: Session, user: UserModel, **kwargs) -> UserModel:
         if not hasattr(user, key):
             raise ValueError(f"User model does not have attribute {key}")
         values[key] = value
-    user = db.execute(
-        update(UserModel).filter_by(id=user.id).values(**values)
-    ).scalar_one()
-    return user
+    db.execute(update(UserModel).filter_by(id=user.id).values(**values))
+    db.commit()
+    return get_user(db, user.id)
 
 
 def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[UserModel]:

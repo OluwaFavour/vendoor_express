@@ -44,7 +44,6 @@ def db_session():
         session.close()
         # Drop tables to reset the database state
         Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
 
 
 def test_create_user_success(test_client, db_session):

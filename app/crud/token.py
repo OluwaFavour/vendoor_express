@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from typing import Optional
 
 from sqlalchemy import delete, update
 from sqlalchemy.orm import Session
@@ -31,19 +32,23 @@ def store_token(
 
 
 def invalidate_token(db: Session, token_type: str, token_jti: str) -> None:
-    return db.execute(
+    db.execute(
         update(TokenModel)
         .filter_by(jti=token_jti, token_type=token_type)
         .values(is_active=False)
     )
+    db.commit()
 
 
-def invalidate_all_user_access_tokens(db: Session, user: UserModel) -> None:
-    return db.execute(
+def invalidate_all_user_access_tokens(
+    db: Session, user: UserModel, token_type: Optional[str] = TokenType.ACCESS.value
+) -> None:
+    db.execute(
         update(TokenModel)
-        .filter_by(user_id=user.id, is_active=True, token_type=TokenType.ACCESS.value)
+        .filter_by(user_id=user.id, is_active=True, token_type=token_type)
         .values(is_active=False)
     )
+    db.commit()
 
 
 def get_token(db: Session, token_jti: str) -> TokenModel | None:

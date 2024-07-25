@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     smtp_port: int
     smtp_login: str
     smtp_password: str
-    frontend_url: str = "http://127.0.0.1:8000"
+    frontend_password_reset_url: str = "http://127.0.0.1:8000/"
     from_email: Optional[str]
     allowed_origins: list[str]
     allowed_methods: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]

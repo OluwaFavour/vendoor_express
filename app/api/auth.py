@@ -15,7 +15,7 @@ from ..crud.user import get_user_by_email, get_user, update_user
 from ..crud.token import invalidate_token, invalidate_all_user_access_tokens
 from ..db.models import User as UserModel
 from ..db.enums import TokenType
-from ..schemas.auth import Token, RefreshTokenOut, TokenPayload
+from ..schemas.auth import Token, RefreshTokenOut, TokenPayload, ResetPasswordRequest
 from ..core.config import settings, oauth2_scheme
 from ..core.utils import authenticate, handle_token_refresh, send_email
 from ..core.security import (
@@ -149,15 +149,15 @@ def logout_all(
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
 def forgot_password(
-    payload: TokenPayload,
+    email: TokenPayload,
     db: Annotated[Session, Depends(get_db)],
     smtp: Annotated[SMTP, Depends(get_smtp)],
 ):
-    email = payload.email
+    email = email.email
     user = get_user_by_email(db=db, email=email)
     if user:
         reset_token = create_reset_token(data={"sub": str(user.id)}, db=db)
-        reset_link = f"{settings.frontend_url}/reset-password?token={reset_token}"
+        reset_link = f"{settings.frontend_password_reset_url}?token={reset_token}"
         plain_text = f"Click the link to reset your password: {reset_link}"
         html_text = f"""<!DOCTYPE html>
         <html lang="en">
@@ -248,8 +248,8 @@ def forgot_password(
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
 def reset_password(
+    new_password: ResetPasswordRequest,
     authorization: Annotated[str, Header(pattern="Bearer .*")],
-    new_password: Annotated[str, Form()],
     db: Annotated[Session, Depends(get_db)],
 ):
     try:
@@ -263,11 +263,15 @@ def reset_password(
         jti = payload.get("jti")
         user = get_user(db, uuid.UUID(user_id))
         if user:
-            hashed_password = hash_password(new_password)
+            hashed_password = hash_password(new_password.new_password)
             user = update_user(db, user, hashed_password=hashed_password)
 
             # Invalidate the reset token
-            invalidate_token(db=db, token_jti=jti, token_type=TokenType.RESET.value)
+            invalidate_token(
+                db=db, token_jti=jti, token_type=TokenType.RESET_PASSWORD.value
+            )
+            # Invalidate old reset tokens
+            invalidate_all_user_access_tokens(db, user, TokenType.RESET_PASSWORD.value)
             return {"message": "Password reset successful"}
     except IndexError:
         raise HTTPException(
@@ -278,6 +282,6 @@ def reset_password(
     except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
+            detail="Could not validate credentials, might be missing, invalid or expired",
             headers={"WWW-Authenticate": "Bearer"},
         )

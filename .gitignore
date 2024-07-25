@@ -3,6 +3,8 @@
 *.sqlite3
 *.db
 *.log
+*.bat
+README.md
 migrations/versions/*
 secret_key_generator.py
 

@@ -19,3 +19,7 @@ class RefreshTokenOut(BaseModel):
 
 class TokenPayload(BaseModel):
     email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str
