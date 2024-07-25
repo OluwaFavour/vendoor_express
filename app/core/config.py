@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
@@ -14,7 +15,7 @@ class Settings(BaseSettings):
     token_url: str = "auth/login"
     # smtp_host: str
     # smtp_port: int
-    from_email: str
+    from_email: Optional[str] = None
     allowed_origins: list[str]
     allowed_methods: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
     allow_credentials: bool = True
