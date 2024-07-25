@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 from fastapi import Depends, HTTPException, status
 import jwt
@@ -41,18 +42,19 @@ def get_current_user(
         jti = payload.get("jti")
         if jti is None:
             raise credentials_exception
-        email = payload.get("sub")
-        if email is None:
+        user_id = payload.get("sub")
+        user_id = uuid.UUID(user_id)
+        if user_id is None:
             raise credentials_exception
     except jwt.PyJWTError:
         raise credentials_exception
-    user = user_crud.get_user_by_email(db, email)
+    user = user_crud.get_user(db=db, user_id=user_id)
     if user is None:
         raise credentials_exception
 
     # Check the token in the database
     db_token = token_crud.get_token(db, jti)
-    if db_token is None:
+    if db_token is None or db_token.is_active is False:
         raise credentials_exception
     if db_token.expires_at.replace(tzinfo=datetime.UTC) < datetime.datetime.now(
         datetime.UTC

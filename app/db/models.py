@@ -12,6 +12,7 @@ from .enums import (
     PaymentMethodType,
     OrderStatusType,
     NotificationType,
+    TokenType,
 )
 
 
@@ -24,10 +25,21 @@ class Token(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now()
     )
+    token_type: Mapped[str] = mapped_column(nullable=False, index=True)
+    is_active: Mapped[bool] = mapped_column(nullable=False, insert_default=True)
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE")
     )
     user: Mapped["User"] = relationship(back_populates="tokens")
+
+    @validates("token_type")
+    def validate_token_type(self, key, value):
+        if value:
+            for enum in TokenType:
+                if value == enum.value:
+                    return value
+            raise ValueError(f"Invalid value for {key}: {value}")
+        return value
 
 
 class User(Base):

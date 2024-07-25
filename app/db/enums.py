@@ -37,3 +37,8 @@ class UserRoleType(str, Enum):
     USER = "user"
     VENDOR = "vendor"
     ADMIN = "admin"
+
+
+class TokenType(str, Enum):
+    ACCESS = "access"
+    REFRESH = "refresh"

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
     token_url: str = "auth/login"
 
     model_config = SettingsConfigDict(env_file=".env")
@@ -27,4 +28,4 @@ settings = get_settings()
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=get_settings().token_url)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=settings.token_url)

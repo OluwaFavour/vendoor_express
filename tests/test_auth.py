@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.dependencies import get_db
 from app.db.models import Base, User
-from app.core.security import hash_password
+from app.core.security import hash_password, create_refresh_token
 from .conftest import test_client
 from app.core.debug import logger
 
@@ -70,8 +70,6 @@ def create_test_user(db):
 
 
 def test_login_for_access_token(test_client, db_session):
-    db_data = db_session.execute(select(User)).scalar_one_or_none()
-    logger.info(db_data)
     user, password = create_test_user(db_session)
     response = test_client.post(
         "/api/auth/login", data={"username": user.email, "password": password}
@@ -91,6 +89,40 @@ def test_login_for_access_token_invalid_credentials(test_client, db_session):
     assert response.json() == {
         "detail": "User with email 'invalid@example.com' does not exist."
     }
+
+
+def test_refresh_access_token(test_client, db_session, mocker):
+    user, password = create_test_user(db_session)
+
+    response = test_client.post(
+        "/api/auth/login", data={"username": user.email, "password": password}
+    )
+    data = response.json()
+    refresh_token = data["refresh_token"]
+
+    response = test_client.post(
+        "/api/auth/refresh", headers={"Authorization": f"Bearer {refresh_token}"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+
+
+def test_refresh_access_token_invalid_token(test_client, db_session):
+    response = test_client.post(
+        "/api/auth/refresh", headers={"Authorization": "Bearer invalidtoken"}
+    )
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Could not validate credentials, might be missing, invalid or expired"
+    }
+
+
+def test_refresh_access_token_invalid_token_format(test_client, db_session):
+    response = test_client.post(
+        "/api/auth/refresh", headers={"Authorization": "invalidtoken"}
+    )
+    assert response.status_code == 422
 
 
 def test_logout(test_client, db_session, mocker):

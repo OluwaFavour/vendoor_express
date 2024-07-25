@@ -26,7 +26,7 @@ def update_user(db: Session, user: UserModel, **kwargs) -> UserModel:
             raise ValueError(f"User model does not have attribute {key}")
         values[key] = value
     user = db.execute(
-        update(UserModel).where(UserModel.id == user.id).values(**values)
+        update(UserModel).filter_by(id=user.id).values(**values)
     ).scalar_one()
     return user
 
