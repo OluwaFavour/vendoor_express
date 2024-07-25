@@ -6,11 +6,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from typing import Optional, Annotated, Any
 
-from .internal.crud import get_token, get_user, get_user_by_email, delete_token
-from .internal.database import SessionLocal
-from .internal.models import User
-from .internal.settings import oauth2_scheme, get_settings
-from .logger import logger
+from .crud import token as token_crud
+from .crud import user as user_crud
+from .db.session import SessionLocal
+from .db.models import User
+from .core.config import oauth2_scheme, settings
+from .core.debug import logger
 
 
 def get_db():
@@ -34,8 +35,8 @@ def get_current_user(
     try:
         payload: dict[str, Any] = jwt.decode(
             jwt=token,
-            key=get_settings().secret_key,
-            algorithms=[get_settings().algorithm],
+            key=settings.secret_key,
+            algorithms=[settings.algorithm],
         )
         jti = payload.get("jti")
         if jti is None:
@@ -45,19 +46,19 @@ def get_current_user(
             raise credentials_exception
     except jwt.PyJWTError:
         raise credentials_exception
-    user = get_user_by_email(db, email)
+    user = user_crud.get_user_by_email(db, email)
     if user is None:
         raise credentials_exception
 
     # Check the token in the database
-    db_token = get_token(db, jti)
+    db_token = token_crud.get_token(db, jti)
     if db_token is None:
         raise credentials_exception
     if db_token.expires_at.replace(tzinfo=datetime.UTC) < datetime.datetime.now(
         datetime.UTC
     ):
         try:
-            delete_token(db, jti)
+            token_crud.delete_token(db, jti)
         except SQLAlchemyError as e:
             logger.error(f"Could not delete token: {e}")
             raise HTTPException(
@@ -66,7 +67,7 @@ def get_current_user(
             )
         raise credentials_exception
 
-    user = get_user(db, db_token.user_id)
+    user = user_crud.get_user(db, db_token.user_id)
     if user is None:
         raise credentials_exception
     return user

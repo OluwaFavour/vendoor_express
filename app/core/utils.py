@@ -6,9 +6,10 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from .models import User
-from .crud import get_user_by_email, store_token
-from .settings import password_context, get_settings
+from ..db.models import User
+from ..crud import user as user_crud
+from ..crud import token as token_crud
+from .config import password_context, get_settings
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -45,15 +46,17 @@ def create_access_token(
     )
 
     # Get the user from the database
-    user = get_user_by_email(db, data["sub"])  # data["sub"] is the email
+    user = user_crud.get_user_by_email(db, data["sub"])  # data["sub"] is the email
     # Store the token in the database
-    store_token(db=db, token_jti=to_encode["jti"], expires_at=expire, user=user)
+    token_crud.store_token(
+        db=db, token_jti=to_encode["jti"], expires_at=expire, user=user
+    )
 
     return encoded_jwt
 
 
 def authenticate(db: Session, email: str, password: str) -> User:
-    user = get_user_by_email(db, email)
+    user = user_crud.get_user_by_email(db, email)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

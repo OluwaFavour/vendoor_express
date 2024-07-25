@@ -5,12 +5,12 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from ..main import app
-from ..dependencies import get_db
-from ..internal.models import Base, User
-from ..internal.utils import hash_password
+from app.main import app
+from app.dependencies import get_db
+from app.db.models import Base, User
+from app.core.utils import hash_password
 from .conftest import test_client
-from ..logger import logger
+from app.core.debug import logger
 
 # Setup the database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_auth.db"
@@ -95,7 +95,7 @@ def test_login_for_access_token_invalid_credentials(test_client, db_session):
 
 def test_logout(test_client, db_session, mocker):
     user, password = create_test_user(db_session)
-    mocker.patch("vendoor_express.internal.utils.authenticate", return_value=user)
+    mocker.patch("app.core.utils.authenticate", return_value=user)
 
     response = test_client.post(
         "/api/auth/login", data={"username": user.email, "password": password}
@@ -112,9 +112,7 @@ def test_logout(test_client, db_session, mocker):
 
 def test_logout_all(test_client, db_session, mocker):
     user, password = create_test_user(db_session)
-    mocker.patch(
-        "vendoor_express.dependencies.get_current_active_user", return_value=user
-    )
+    mocker.patch("app.dependencies.get_current_active_user", return_value=user)
 
     response = test_client.post(
         "/api/auth/login", data={"username": user.email, "password": password}

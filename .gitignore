@@ -3,8 +3,10 @@
 *.sqlite3
 *.db
 *.log
+migrations/versions/*
 
 # folders
-migrations/versions/
 __pycache__/
 venv/
+.pytest_cache/
+secret_key_generator/

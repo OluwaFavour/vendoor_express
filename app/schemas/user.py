@@ -3,16 +3,7 @@ import uuid
 
 from pydantic import BaseModel, EmailStr, ConfigDict
 
-from .enums import UserRoleType
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class TokenPayload(BaseModel):
-    email: EmailStr
+from ..db.enums import UserRoleType
 
 
 class UserBase(BaseModel):

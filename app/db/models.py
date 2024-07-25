@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy.orm import mapped_column, Mapped, relationship, validates
 from sqlalchemy import ForeignKey, func, SmallInteger, CheckConstraint
 
-from .database import Base
+from .base import Base
 from .enums import (
     UserRoleType,
     ProofOfIdentityType,

@@ -5,9 +5,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from .conftest import test_client
-from ..dependencies import get_db
-from ..internal.models import Base
-from ..main import app
+from app.dependencies import get_db
+from app.db.models import Base
+from app.main import app
 
 # Setup the database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite://"

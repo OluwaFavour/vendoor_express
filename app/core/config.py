@@ -21,6 +21,8 @@ def get_settings() -> Settings:
     return Settings()
 
 
+settings = get_settings()
+
 # Password hashing
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
