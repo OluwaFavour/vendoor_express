@@ -241,6 +241,7 @@ def forgot_password(
             recipient=email,
             plain_text=plain_text,
             html_text=html_text,
+            sender=settings.from_email,
         )
         return {"message": "Password reset link sent to your email"}
     return None

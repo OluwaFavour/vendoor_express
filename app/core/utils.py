@@ -63,7 +63,11 @@ def handle_token_refresh(refresh_token: str, db: Session) -> dict[str, str]:
 
 
 def create_email_message(
-    subject: str, recipient: str, plain_text: str, html_text: Optional[str] = None
+    subject: str,
+    recipient: str,
+    plain_text: str,
+    sender: str,
+    html_text: Optional[str] = None,
 ) -> Union[MIMEText, MIMEMultipart]:
     if html_text:
         message = MIMEMultipart("alternative")
@@ -73,18 +77,29 @@ def create_email_message(
         message = MIMEText(plain_text, "plain")
 
     message["Subject"] = subject
-    message["From"] = settings.from_email
+    message["From"] = sender
     message["To"] = recipient
 
     return message
 
 
 def send_email(
-    smtp: SMTP, subject: str, recipient: str, plain_text: str, html_text: Optional[str]
+    smtp: SMTP,
+    subject: str,
+    recipient: str,
+    plain_text: str,
+    html_text: Optional[str] = None,
+    sender: str = settings.from_email,
 ) -> None:
     try:
-        message = create_email_message(subject, recipient, plain_text, html_text)
-        smtp.sendmail(settings.from_email, recipient, message.as_string())
+        message = create_email_message(
+            subject=subject,
+            recipient=recipient,
+            plain_text=plain_text,
+            html_text=html_text,
+            sender=sender,
+        )
+        smtp.sendmail(sender, recipient, message.as_string())
     except SMTPRecipientsRefused as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
