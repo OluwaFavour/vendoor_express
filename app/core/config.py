@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     token_url: str = "auth/login"
+    # smtp_host: str
+    # smtp_port: int
+    from_email: str
+    allowed_origins: list[str]
+    allowed_methods: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+    allow_credentials: bool = True
 
     model_config = SettingsConfigDict(env_file=".env")
 

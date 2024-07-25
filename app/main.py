@@ -1,8 +1,10 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from .db.init_db import init_db
 from .api import users, auth
+from .core.config import settings
 
 
 @asynccontextmanager
@@ -17,6 +19,15 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+)
+
+# ADD CORS MIDDLEWARE
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=settings.allow_credentials,
+    allow_methods=settings.allowed_methods,
+    allow_headers=["*"],
 )
 
 app.include_router(auth.router)
