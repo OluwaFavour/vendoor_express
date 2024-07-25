@@ -34,6 +34,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 
 
-@app.get("/")
+@app.head("/", include_in_schema=False)
+@app.get("/", include_in_schema=False)
 def read_root():
     return {"Hello": "World"}
