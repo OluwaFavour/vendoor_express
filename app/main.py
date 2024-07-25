@@ -16,6 +16,7 @@ app = FastAPI(
     version="0.0.1",
     lifespan=lifespan,
     docs_url="/api/docs",
+    redoc_url="/api/redoc",
 )
 
 app.include_router(auth.router)

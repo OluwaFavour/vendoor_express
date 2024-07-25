@@ -8,12 +8,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db, get_current_active_user
-from ..internal.crud import delete_token, delete_user_tokens
-from ..internal.models import User as UserModel
-from ..internal.schemas import Token
-from ..internal.settings import get_settings, oauth2_scheme
-from ..internal.utils import authenticate, create_access_token
-from ..logger import logger
+from ..crud.token import delete_token, delete_user_tokens
+from ..db.models import User as UserModel
+from ..schemas.auth import Token
+from ..core.config import settings, oauth2_scheme
+from ..core.utils import authenticate
+from ..core.security import create_access_token
+from ..core.debug import logger
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -24,7 +25,7 @@ def login_for_access_token(
     db: Annotated[Session, Depends(get_db)],
 ):
     user = authenticate(db, email=form_data.username, password=form_data.password)
-    access_token_expires = timedelta(minutes=get_settings().access_token_expire_minutes)
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(
         data={"sub": user.email}, db=db, expires_delta=access_token_expires
     )
@@ -56,8 +57,8 @@ def logout(
     try:
         payload: dict[str, Any] = jwt.decode(
             jwt=token,
-            key=get_settings().secret_key,
-            algorithms=[get_settings().algorithm],
+            key=settings.secret_key,
+            algorithms=[settings.algorithm],
         )
         jti = payload.get("jti")
         if jti is None:

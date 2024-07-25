@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, status
 import jwt
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from typing import Optional, Annotated, Any
+from typing import Annotated, Any
 
 from .crud import token as token_crud
 from .crud import user as user_crud

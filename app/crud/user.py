@@ -7,22 +7,16 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 
 from ..db.models import User as UserModel
-from ..core.utils import hash_password
+from ..core.security import hash_password
 from ..schemas.user import UserCreate
 
 
 def get_user(db: Session, user_id: uuid.UUID) -> UserModel | None:
-    try:
-        return db.execute(select(UserModel).filter_by(id=user_id)).scalar_one()
-    except NoResultFound:
-        return None
+    return db.execute(select(UserModel).filter_by(id=user_id)).scalar_one_or_none()
 
 
 def get_user_by_email(db: Session, email: str) -> UserModel | None:
-    try:
-        return db.execute(select(UserModel).filter_by(email=email)).scalar_one()
-    except NoResultFound:
-        return None
+    return db.execute(select(UserModel).filter_by(email=email)).scalar_one_or_none()
 
 
 def update_user(db: Session, user: UserModel, **kwargs) -> UserModel:

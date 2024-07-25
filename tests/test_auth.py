@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.dependencies import get_db
 from app.db.models import Base, User
-from app.core.utils import hash_password
+from app.core.security import hash_password
 from .conftest import test_client
 from app.core.debug import logger
 
