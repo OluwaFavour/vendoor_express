@@ -13,8 +13,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     token_url: str = "auth/login"
-    # smtp_host: str
-    # smtp_port: int
+    smtp_host: str
+    smtp_port: int
+    smtp_login: str
+    smtp_password: str
     from_email: Optional[str] = None
     allowed_origins: list[str]
     allowed_methods: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]

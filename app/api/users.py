@@ -15,15 +15,17 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 @router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
-def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]) -> User:
-    db_user = db_get_user_by_email(db, user.email)
+def create_user(
+    user_scheme: UserCreate, db: Annotated[Session, Depends(get_db)]
+) -> User:
+    db_user = db_get_user_by_email(db, user_scheme.email)
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already in use",
         )
     try:
-        new_user = db_create_user(db, user)
+        new_user = db_create_user(db, user_scheme)
         logger.info(f"User created: {new_user.id}")
     except Exception as e:
         logger.error(f"Error creating user: {e}")
