@@ -4,9 +4,9 @@
 *.db
 *.log
 migrations/versions/*
+secret_key_generator.py
 
 # folders
 __pycache__/
 venv/
 .pytest_cache/
-secret_key_generator/
