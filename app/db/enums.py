@@ -43,3 +43,10 @@ class TokenType(str, Enum):
     ACCESS = "access"
     REFRESH = "refresh"
     RESET_PASSWORD = "reset_password"
+
+
+class WantedHelpType(str, Enum):
+    ADS_AND_AWARENESS = "ads_and_awareness"
+    GAINING_NEW_CUSTOMERS = "gaining_new_customers"
+    PACKAGING_AND_SHIPPING = "packaging_and_shipping"
+    SELL_ONLINE = "sell_online"

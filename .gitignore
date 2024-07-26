@@ -7,6 +7,7 @@
 README.md
 migrations/versions/*
 secret_key_generator.py
+text_reader.py
 
 # folders
 __pycache__/

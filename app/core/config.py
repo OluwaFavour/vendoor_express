@@ -1,3 +1,4 @@
+import cloudinary
 from functools import lru_cache
 from typing import Optional
 
@@ -23,6 +24,7 @@ class Settings(BaseSettings):
     allowed_origins: list[str]
     allowed_methods: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
     allow_credentials: bool = True
+    cloudinary_url: str
 
     model_config = SettingsConfigDict(env_file=".env")
 
@@ -40,3 +42,23 @@ password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=settings.token_url)
+
+
+# Cloudinary configuration parser
+def cloudinary_config_parser(cloudinary_url: str) -> dict[str, str]:
+    cloudinary_config = {}
+    cloudinary_url = cloudinary_url.split("://")[1]
+    cloudinary_config["cloud_name"] = cloudinary_url.split("@")[1].split(".")[0]
+    cloudinary_config["api_key"] = cloudinary_url.split("@")[0].split(":")[0]
+    cloudinary_config["api_secret"] = cloudinary_url.split("@")[0].split(":")[1]
+    return cloudinary_config
+
+
+# Cloudinary configuration
+config_data = cloudinary_config_parser(settings.cloudinary_url)
+config = cloudinary.config(
+    cloud_name=config_data["cloud_name"],
+    api_key=config_data["api_key"],
+    api_secret=config_data["api_secret"],
+    secret=True,
+)

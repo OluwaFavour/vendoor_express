@@ -17,7 +17,12 @@ from ..db.models import User as UserModel
 from ..db.enums import TokenType
 from ..schemas.auth import Token, RefreshTokenOut, TokenPayload, ResetPasswordRequest
 from ..core.config import settings, oauth2_scheme
-from ..core.utils import authenticate, handle_token_refresh, send_email
+from ..core.utils import (
+    authenticate,
+    handle_token_refresh,
+    send_email,
+    get_html_from_template,
+)
 from ..core.security import (
     create_access_token,
     create_refresh_token,
@@ -159,82 +164,11 @@ def forgot_password(
         reset_token = create_reset_token(data={"sub": str(user.id)}, db=db)
         reset_link = f"{settings.frontend_password_reset_url}?token={reset_token}"
         plain_text = f"Click the link to reset your password: {reset_link}"
-        html_text = f"""<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Password Reset</title>
-            <style>
-                body {{
-                    font-family: Arial, sans-serif;
-                    background-color: #f4f4f4;
-                    margin: 0;
-                    padding: 0;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
-                }}
-                .email-container {{
-                    background-color: #FFFFFF;
-                    padding: 20px;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                    text-align: center;
-                    max-width: 600px;
-                    width: 100%;
-                }}
-                .email-header img {{
-                    width: 100px;
-                }}
-                .email-header h1 {{
-                    font-size: 24px;
-                    color: #333;
-                    margin: 20px 0;
-                }}
-                .email-body p {{
-                    font-size: 16px;
-                    color: #666;
-                    margin: 10px 0;
-                }}
-                .email-body .highlight {{
-                    color: #C52E05;
-                    font-weight: bold;
-                }}
-                .reset-button {{
-                    background-color: #C52E05;
-                    color: #FFFFFF;
-                    padding: 10px 20px;
-                    text-decoration: none;
-                    border-radius: 5px;
-                    margin-top: 20px;
-                    display: inline-block;
-                }}
-                .reset-button:hover {{
-                    background-color: #a12504;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="email-container">
-                <div class="email-header">
-                    <img src="https://via.placeholder.com/100" alt="Logo">
-                    <h1>Reset Password</h1>
-                </div>
-                <div class="email-body">
-                    <p>Hi there,</p>
-                    <p>We received a request to reset the password for your account.</p>
-                    <p>Please click the button below to reset your password:</p>
-                    <a href="{reset_link}" class="reset-button">Verify</a>
-                    <p>If you did not request a password reset, please ignore this email or reply to let us know. This password reset link is only valid for the next 60 minutes.</p>
-                    <p>Thanks,</p>
-                    <p>The Vendoor Express Team</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
+        html_text = get_html_from_template(
+            template="password_reset.html",
+            reset_link=reset_link,
+            user_name=user.full_name,
+        )
         send_email(
             smtp=smtp,
             subject="Vendoor Express: Password Reset Request",

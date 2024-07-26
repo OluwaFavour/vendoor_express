@@ -13,6 +13,7 @@ from .enums import (
     OrderStatusType,
     NotificationType,
     TokenType,
+    WantedHelpType,
 )
 
 
@@ -129,6 +130,7 @@ class Shop(Base):
     category: Mapped[str] = mapped_column(nullable=False, index=True)
     email: Mapped[str] = mapped_column(nullable=False)
     phone_number: Mapped[str] = mapped_column(nullable=False)
+    wanted_help: Mapped[Optional[str]] = mapped_column(nullable=True)
     logo: Mapped[str] = mapped_column(nullable=False, comment="URL to the image")
     products: Mapped[Optional[list["Product"]]] = relationship(
         back_populates="shop", cascade="save-update, merge, refresh-expire, expunge"
@@ -143,6 +145,15 @@ class Shop(Base):
     def validate_type(self, key, value):
         if value:
             for enum in ShopTypeType:
+                if value == enum.value:
+                    return value
+            raise ValueError(f"Invalid value for {key}: {value}")
+        return value
+
+    @validates("wanted_help")
+    def validate_wanted_help(self, key, value):
+        if value:
+            for enum in WantedHelpType:
                 if value == enum.value:
                     return value
             raise ValueError(f"Invalid value for {key}: {value}")

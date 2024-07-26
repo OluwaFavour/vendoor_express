@@ -1,4 +1,5 @@
 import jwt
+from jinja2 import FileSystemLoader, Environment
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from smtplib import (
@@ -8,8 +9,9 @@ from smtplib import (
     SMTPDataError,
     SMTPException,
 )
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
+from cloudinary.uploader import upload
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -125,3 +127,26 @@ def send_email(
         )
     else:
         return None
+
+
+def get_html_from_template(template: str, **kwargs) -> str:
+    env = Environment(loader=FileSystemLoader("app/templates"))
+    template = env.get_template(template)
+    return template.render(**kwargs)
+
+
+def upload_image(asset_id: str, image: Any) -> str:
+    try:
+        response = upload(
+            image,
+            asset_folder=asset_id,
+            use_asset_folder_as_public_id_prefix=True,
+            use_filename=True,
+            allowed_formats="pdf,png,jpg,jpeg,mp4",
+        )
+        return response["secure_url"]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error occurred while uploading image: {e}",
+        )
