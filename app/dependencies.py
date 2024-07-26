@@ -8,12 +8,15 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from typing import Annotated, Any
 
+
 from .crud import token as token_crud
 from .crud import user as user_crud
+from .db.enums import TokenType
 from .db.session import SessionLocal
 from .db.models import User
 from .core.config import oauth2_scheme, settings
 from .core.debug import logger
+from .core.security import validate_token
 
 
 def get_smtp():
@@ -58,44 +61,8 @@ def get_current_user(
         detail="Could not validate credentials, might be missing, invalid or expired",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload: dict[str, Any] = jwt.decode(
-            jwt=token,
-            key=settings.secret_key,
-            algorithms=[settings.algorithm],
-        )
-        jti = payload.get("jti")
-        if jti is None:
-            raise credentials_exception
-        user_id = payload.get("sub")
-        user_id = uuid.UUID(user_id)
-        if user_id is None:
-            raise credentials_exception
-    except jwt.PyJWTError:
-        raise credentials_exception
-    user = user_crud.get_user(db=db, user_id=user_id)
-    if user is None:
-        raise credentials_exception
-
-    # Check the token in the database
-    db_token = token_crud.get_token(db, jti)
-    if db_token is None or db_token.is_active is False:
-        raise credentials_exception
-    if db_token.expires_at.replace(tzinfo=datetime.UTC) < datetime.datetime.now(
-        datetime.UTC
-    ):
-        try:
-            token_crud.delete_token(db, jti)
-        except SQLAlchemyError as e:
-            logger.error(f"Could not delete token: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"message": "Could not delete token", "error": str(e)},
-            )
-        raise credentials_exception
-
-    user = user_crud.get_user(db, db_token.user_id)
-    if user is None:
+    user = validate_token(token=token, token_type=TokenType.ACCESS, db=db)
+    if not user:
         raise credentials_exception
     return user
 

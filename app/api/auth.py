@@ -4,7 +4,7 @@ from smtplib import SMTP
 from typing import Annotated, Any
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import EmailStr
 from sqlalchemy.exc import SQLAlchemyError
@@ -15,7 +15,7 @@ from ..crud.user import get_user_by_email, get_user, update_user
 from ..crud.token import invalidate_token, invalidate_all_user_access_tokens
 from ..db.models import User as UserModel
 from ..db.enums import TokenType
-from ..schemas.auth import Token, RefreshTokenOut, TokenPayload, ResetPasswordRequest
+from ..schemas.auth import Token, TokenPayload, ResetPasswordRequest
 from ..core.config import settings, oauth2_scheme
 from ..core.utils import (
     authenticate,
@@ -36,6 +36,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[Session, Depends(get_db)],
+    response: Response,
 ):
     user = authenticate(db, email=form_data.username, password=form_data.password)
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
@@ -46,22 +47,21 @@ def login_for_access_token(
         expires_delta=access_token_expires,
         token_type=TokenType.ACCESS.value,
     )
-    refresh_token = create_token(
+    _ = create_token(
         data={"sub": str(user.id)},
         db=db,
         expires_delta=refresh_token_expires,
         token_type=TokenType.REFRESH.value,
+        response=response,
     )
     return {
         "access_token": access_token,
         "access_token_expires_in_minutes": settings.access_token_expire_minutes,
-        "refresh_token": refresh_token,
-        "refresh_token_expires_in_days": settings.refresh_token_expire_days,
         "token_type": "bearer",
     }
 
 
-@router.post("/refresh", response_model=RefreshTokenOut)
+@router.post("/refresh", response_model=Token)
 def refresh_access_token(
     authorization: Annotated[str, Header(pattern="Bearer .*")],
     db: Annotated[Session, Depends(get_db)],

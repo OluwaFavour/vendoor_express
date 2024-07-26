@@ -101,8 +101,7 @@ def test_refresh_access_token(test_client, db_session, mocker):
     response = test_client.post(
         "/api/auth/login", data={"username": user.email, "password": password}
     )
-    data = response.json()
-    refresh_token = data["refresh_token"]
+    refresh_token = test_client.cookies.get("refresh_token")
 
     response = test_client.post(
         "/api/auth/refresh", headers={"Authorization": f"Bearer {refresh_token}"}
