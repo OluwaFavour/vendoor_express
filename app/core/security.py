@@ -32,14 +32,11 @@ def hash_password(password: str) -> str:
     return password_context.hash(password)
 
 
-def create_access_token(
-    data: dict, db: Session, expires_delta: Optional[datetime.timedelta] = None
+def create_token(
+    data: dict, db: Session, token_type: str, expires_delta: Optional[datetime.timedelta]
 ) -> str:
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.datetime.now(datetime.UTC) + expires_delta
-    else:
-        expire = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=15)
+    expire = datetime.datetime.now(datetime.UTC) + expires_delta
     to_encode.update({"exp": expire})
     to_encode.update({"jti": str(uuid.uuid4())})
     encoded_jwt = jwt.encode(
@@ -51,32 +48,7 @@ def create_access_token(
         token_jti=to_encode["jti"],
         expires_at=expire,
         user_id=uuid.UUID(data["sub"]),
-        token_type=TokenType.ACCESS.value,
-    )
-
-    return encoded_jwt
-
-
-def create_refresh_token(
-    data: dict, db: Session, expires_delta: Optional[datetime.timedelta] = None
-) -> str:
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.datetime.now(datetime.UTC) + expires_delta
-    else:
-        expire = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=30)
-    to_encode.update({"exp": expire})
-    to_encode.update({"jti": str(uuid.uuid4())})
-    encoded_jwt = jwt.encode(
-        to_encode, settings.secret_key, algorithm=settings.algorithm
-    )
-    # Store the token in the database
-    token_crud.store_token(
-        db=db,
-        token_jti=to_encode["jti"],
-        expires_at=expire,
-        user_id=uuid.UUID(data["sub"]),
-        token_type=TokenType.REFRESH.value,
+        token_type=token_type
     )
 
     return encoded_jwt
@@ -135,14 +107,14 @@ def refresh_access_token(refresh_token: str, db: Session) -> tuple[str, str]:
     access_token_expires = datetime.timedelta(
         minutes=settings.access_token_expire_minutes
     )
-    access_token = create_access_token(
-        data={"sub": str(user.id)}, db=db, expires_delta=access_token_expires
+    access_token = create_token(
+        data={"sub": str(user.id)}, db=db, expires_delta=access_token_expires, token_type=TokenType.ACCESS.value
     )
 
     # Create a new refresh token
     refresh_token_expires = datetime.timedelta(days=settings.refresh_token_expire_days)
-    refresh_token = create_refresh_token(
-        data={"sub": str(user.id)}, db=db, expires_delta=refresh_token_expires
+    refresh_token = create_token(
+        data={"sub": str(user.id)}, db=db, expires_delta=refresh_token_expires, token_type=TokenType.REFRESH.value
     )
 
     # Invalidate the old refresh token
@@ -151,30 +123,3 @@ def refresh_access_token(refresh_token: str, db: Session) -> tuple[str, str]:
     )
 
     return access_token, refresh_token
-
-
-def create_reset_token(
-    data: dict, db: Session, expires_delta: Optional[datetime.timedelta] = None
-) -> str:
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.datetime.now(datetime.UTC) + expires_delta
-    else:
-        expire = datetime.datetime.now(datetime.UTC) + datetime.timedelta(
-            minutes=settings.reset_token_expire_minutes
-        )
-    to_encode.update({"exp": expire})
-    to_encode.update({"jti": str(uuid.uuid4())})
-    encoded_jwt = jwt.encode(
-        to_encode, settings.secret_key, algorithm=settings.algorithm
-    )
-    # Store the token in the database
-    token_crud.store_token(
-        db=db,
-        token_jti=to_encode["jti"],
-        expires_at=expire,
-        user_id=uuid.UUID(data["sub"]),
-        token_type=TokenType.RESET_PASSWORD.value,
-    )
-
-    return encoded_jwt

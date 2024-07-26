@@ -22,14 +22,14 @@ class Token(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
     jti: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
-    expires_at: Mapped[datetime.datetime] = mapped_column(nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        nullable=False, insert_default=func.now()
-    )
-    token_type: Mapped[str] = mapped_column(nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, insert_default=True)
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE")
+    )
+    token_type: Mapped[str] = mapped_column(nullable=False, index=True)
+    expires_at: Mapped[datetime.datetime] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        nullable=False, insert_default=func.now()
     )
     user: Mapped["User"] = relationship(back_populates="tokens")
 

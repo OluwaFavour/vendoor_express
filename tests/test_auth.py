@@ -1,3 +1,4 @@
+from datetime import timedelta
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -8,9 +9,11 @@ from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.dependencies import get_db
 from app.db.models import Base, User
-from app.core.security import hash_password, create_reset_token, verify_password
+from app.core.security import hash_password, create_token, verify_password
 from .conftest import test_client
 from app.core.debug import logger
+from app.core.config import settings
+from app.db.enums import TokenType
 
 # Setup the database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_auth.db"
@@ -170,7 +173,12 @@ def test_forget_password(test_client, db_session, mocker):
 
 def test_reset_password(test_client, db_session, mocker):
     user, _ = create_test_user(db_session)
-    reset_token = create_reset_token(data={"sub": str(user.id)}, db=db_session)
+    reset_token = create_token(
+        data={"sub": str(user.id)},
+        db=db_session,
+        expires_delta=timedelta(minutes=settings.reset_token_expire_minutes),
+        token_type=TokenType.RESET.value,
+    )
     response = test_client.post(
         "/api/auth/reset-password",
         headers={"Authorization": f"Bearer {reset_token}"},

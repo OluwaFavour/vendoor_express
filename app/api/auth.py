@@ -24,9 +24,7 @@ from ..core.utils import (
     get_html_from_template,
 )
 from ..core.security import (
-    create_access_token,
-    create_refresh_token,
-    create_reset_token,
+    create_token,
     hash_password,
 )
 from ..core.debug import logger
@@ -42,11 +40,17 @@ def login_for_access_token(
     user = authenticate(db, email=form_data.username, password=form_data.password)
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     refresh_token_expires = timedelta(days=settings.refresh_token_expire_days)
-    access_token = create_access_token(
-        data={"sub": str(user.id)}, db=db, expires_delta=access_token_expires
+    access_token = create_token(
+        data={"sub": str(user.id)},
+        db=db,
+        expires_delta=access_token_expires,
+        token_type=TokenType.ACCESS.value,
     )
-    refresh_token = create_refresh_token(
-        data={"sub": str(user.id)}, db=db, expires_delta=refresh_token_expires
+    refresh_token = create_token(
+        data={"sub": str(user.id)},
+        db=db,
+        expires_delta=refresh_token_expires,
+        token_type=TokenType.REFRESH.value,
     )
     return {
         "access_token": access_token,
@@ -161,7 +165,13 @@ def forgot_password(
     email = email.email
     user = get_user_by_email(db=db, email=email)
     if user:
-        reset_token = create_reset_token(data={"sub": str(user.id)}, db=db)
+        reset_token_expires = timedelta(minutes=settings.reset_token_expire_minutes)
+        reset_token = create_token(
+            data={"sub": str(user.id)},
+            db=db,
+            token_type=TokenType.RESET.value,
+            expires_delta=reset_token_expires,
+        )
         reset_link = f"{settings.frontend_password_reset_url}?token={reset_token}"
         plain_text = f"Click the link to reset your password: {reset_link}"
         html_text = get_html_from_template(
@@ -202,11 +212,9 @@ def reset_password(
             user = update_user(db, user, hashed_password=hashed_password)
 
             # Invalidate the reset token
-            invalidate_token(
-                db=db, token_jti=jti, token_type=TokenType.RESET_PASSWORD.value
-            )
+            invalidate_token(db=db, token_jti=jti, token_type=TokenType.RESET.value)
             # Invalidate old reset tokens
-            invalidate_all_user_access_tokens(db, user, TokenType.RESET_PASSWORD.value)
+            invalidate_all_user_access_tokens(db, user, TokenType.RESET.value)
             return {"message": "Password reset successful"}
     except IndexError:
         raise HTTPException(

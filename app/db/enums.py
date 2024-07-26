@@ -42,7 +42,7 @@ class UserRoleType(str, Enum):
 class TokenType(str, Enum):
     ACCESS = "access"
     REFRESH = "refresh"
-    RESET_PASSWORD = "reset_password"
+    RESET = "reset"
 
 
 class WantedHelpType(str, Enum):
