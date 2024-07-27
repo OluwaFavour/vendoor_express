@@ -1,15 +1,11 @@
-import datetime
 import smtplib
-import uuid
 
 from fastapi import Depends, HTTPException, status
 import jwt
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from typing import Annotated, Any
+from typing import Annotated
 
 
-from .crud import token as token_crud
 from .crud import user as user_crud
 from .db.enums import TokenType
 from .db.session import SessionLocal
@@ -58,13 +54,20 @@ def get_current_user(
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials, might be missing, invalid or expired",
+        detail="Could not validate credentials, might be missing, or invalid",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    user = validate_token(token=token, token_type=TokenType.ACCESS, db=db)
-    if not user:
+    try:
+        user = validate_token(token=token, token_type=TokenType.ACCESS, db=db)
+        return user
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials, might be expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except HTTPException:
         raise credentials_exception
-    return user
 
 
 def get_current_active_user(

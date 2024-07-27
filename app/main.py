@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from .db.init_db import init_db
 from .api import users, auth
 from .core.config import settings
+from .middleware import auto_refresh_token_middleware
 
 
 @asynccontextmanager
@@ -20,6 +21,9 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+# ADD MIDDLEWARES
+app.middleware("http")(auto_refresh_token_middleware)
 
 # ADD CORS MIDDLEWARE
 app.add_middleware(

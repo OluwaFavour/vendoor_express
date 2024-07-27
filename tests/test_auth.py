@@ -1,5 +1,6 @@
 from datetime import timedelta
 import pytest
+from fastapi import Response
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.future import select
@@ -98,6 +99,7 @@ def test_login_for_access_token_invalid_credentials(test_client, db_session):
 def test_refresh_access_token(test_client, db_session, mocker):
     user, password = create_test_user(db_session)
 
+    test_client.app_state = {"db": db_session}
     response = test_client.post(
         "/api/auth/login", data={"username": user.email, "password": password}
     )

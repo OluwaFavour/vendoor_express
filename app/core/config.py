@@ -1,7 +1,10 @@
 import cloudinary
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Dict, Any, cast
+from typing_extensions import Doc, Annotated
 
+from fastapi import Request
+from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from pydantic_settings import BaseSettings, SettingsConfigDict
