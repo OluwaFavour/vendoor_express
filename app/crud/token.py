@@ -48,6 +48,15 @@ def store_session(
     return session
 
 
+def get_session_by_data(db: Session, data: str) -> SessionModel | None:
+    return db.execute(select(SessionModel).filter_by(data=data)).scalar_one_or_none()
+
+
+def delete_session_by_data(db: Session, data: str) -> None:
+    db.execute(delete(SessionModel).filter_by(data=data))
+    db.commit()
+
+
 def delete_session(db: Session, session_id: uuid.UUID) -> None:
     db.execute(delete(SessionModel).filter_by(id=session_id))
     db.commit()

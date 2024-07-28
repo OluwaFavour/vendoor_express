@@ -33,6 +33,7 @@ from ..core.security import (
     hash_password,
 )
 from ..core.debug import logger
+from ..crud.token import get_session_by_data
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -58,17 +59,18 @@ def login(
     # Generate session ID
     session_id = str(uuid.uuid4())
 
-    # Store session
-    expires_at = settings.session_expire_days
-    expiry = datetime.datetime.now(datetime.UTC) + timedelta(days=expires_at)
     data = str(user.id)
-    session_id = create_session(db=db, id=session_id, data=data, expires_at=expiry)
-    request.session["session_id"] = session_id
-
-    # Delete old session ID if it exists
+    # Delete old session IDs if they exists
+    delete_session_by_user_id(db, data)
     if "session_id" in request.cookies:
         old_session_id = request.cookies["session_id"]
         delete_session(db, uuid.UUID(old_session_id))
+
+    # Store session
+    expires_at = settings.session_expire_days
+    expiry = datetime.datetime.now(datetime.UTC) + timedelta(days=expires_at)
+    session_id = create_session(db=db, id=session_id, data=data, expires_at=expiry)
+    request.session["session_id"] = session_id
 
     # Store new session ID in cookie
     response = JSONResponse(
@@ -76,7 +78,12 @@ def login(
         content={"message": "Successfully logged in"},
     )
     response.set_cookie(
-        key="session_id", value=session_id, expires=expiry, httponly=True
+        key=settings.session_cookie_name,
+        value=session_id,
+        httponly=True,
+        samesite=settings.same_site,
+        max_age=(expires_at * 24 * 60 * 60),
+        secure=settings.https_only,
     )
 
     # Return response

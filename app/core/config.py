@@ -1,11 +1,6 @@
 import cloudinary
 from functools import lru_cache
-from typing import Optional, Dict, Any, cast
-from typing_extensions import Doc, Annotated
-
-from fastapi import Request
-from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
-from fastapi.security import OAuth2PasswordBearer
+from typing import Optional
 from passlib.context import CryptContext
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -46,9 +41,6 @@ settings = get_settings()
 
 # Password hashing
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=settings.token_url)
 
 
 # Cloudinary configuration parser
