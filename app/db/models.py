@@ -1,5 +1,5 @@
 import datetime, uuid, decimal
-from typing import Optional
+from typing import Optional, Any
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship, validates
 from sqlalchemy import ForeignKey, func, SmallInteger, CheckConstraint
@@ -15,6 +15,16 @@ from .enums import (
     TokenType,
     WantedHelpType,
 )
+
+
+class SessionData(Base):
+    __tablename__ = "sessions"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, nullable=False)
+    data: Mapped[str] = mapped_column(nullable=False, index=True)
+    expires_at: Mapped[datetime.datetime] = mapped_column(nullable=False, index=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        nullable=False, insert_default=func.now(), index=True
+    )
 
 
 class Token(Base):

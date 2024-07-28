@@ -1,18 +1,18 @@
+import datetime
 import smtplib
+from typing import Annotated
+import uuid
 
 from fastapi import Depends, HTTPException, status
-import jwt
+from fastapi.requests import Request
 from sqlalchemy.orm import Session
-from typing import Annotated
 
 
-from .crud import user as user_crud
-from .db.enums import TokenType
-from .db.session import SessionLocal
-from .db.models import User
-from .core.config import oauth2_scheme, settings
+from .core.config import settings
 from .core.debug import logger
-from .core.security import validate_token
+from .crud import user as user_crud, token as token_crud
+from .db.models import User
+from .db.session import SessionLocal
 
 
 def get_smtp():
@@ -48,26 +48,25 @@ def get_db():
         db.close()
 
 
-def get_current_user(
-    db: Annotated[Session, Depends(get_db)],
-    token: Annotated[str, Depends(oauth2_scheme)],
-) -> User:
+def get_current_user(db: Annotated[Session, Depends(get_db)], request: Request) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials, might be missing, or invalid",
-        headers={"WWW-Authenticate": "Bearer"},
+        detail="Could not validate credentials",
     )
-    try:
-        user = validate_token(token=token, token_type=TokenType.ACCESS, db=db)
-        return user
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials, might be expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except HTTPException:
+    session_id = request.headers.get("Authorization")
+    if session_id is None:
         raise credentials_exception
+    session = token_crud.get_session(db, session_id)
+    if session is None or session.expires_at < datetime.datetime.now(datetime.UTC):
+        raise credentials_exception
+    user_id = uuid.UUID(session.data)
+    user = user_crud.get_user(db, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found. The user associated with this session has probably been deleted.",
+        )
+    return user
 
 
 def get_current_active_user(
@@ -77,6 +76,6 @@ def get_current_active_user(
         return current_user
     else:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="This user is currently inactive",
         )

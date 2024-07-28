@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     allowed_methods: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
     allow_credentials: bool = True
     cloudinary_url: str
+    session_cookie_name: str = "session_id"
+    session_expire_days: int = 14
 
     model_config = SettingsConfigDict(env_file=".env")
 

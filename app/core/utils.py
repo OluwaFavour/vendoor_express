@@ -1,4 +1,6 @@
 import jwt
+import uuid
+import datetime
 from jinja2 import FileSystemLoader, Environment
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -9,20 +11,26 @@ from smtplib import (
     SMTPDataError,
     SMTPException,
 )
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, Annotated
 
 from cloudinary.uploader import upload
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 
 from .config import settings
 from .security import verify_password, refresh_access_token
 from ..db.models import User
-from ..crud import user as user_crud
+from ..crud import user as user_crud, token as token_crud
+from ..core.forms import HTTPSessionPasswordForm
+from ..dependencies import get_db
 
 
-def authenticate(db: Session, email: str, password: str) -> User:
+def authenticate(
+    db: Annotated[Session, Depends(get_db)],
+    credentials: Annotated[HTTPSessionPasswordForm, Depends()],
+) -> User:
+    email = credentials.email
+    password = credentials.password
     user = user_crud.get_user_by_email(db, email)
     if user is None:
         raise HTTPException(
@@ -37,6 +45,24 @@ def authenticate(db: Session, email: str, password: str) -> User:
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+
+def create_session(
+    db: Annotated[Session, Depends(get_db)],
+    id: str,
+    data: str,
+    expires_at: datetime.datetime,
+) -> str:
+    session = token_crud.store_session(
+        db=db, session_id=uuid.UUID(id), data=data, expires_at=expires_at
+    )
+    return str(session.id)
+
+
+def delete_session_by_user_id(
+    db: Annotated[Session, Depends(get_db)], user_id: str
+) -> None:
+    token_crud.delete_sessions_by_data(db, user_id)
 
 
 def handle_token_refresh(refresh_token: str, db: Session) -> dict[str, str]:

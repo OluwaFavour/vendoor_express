@@ -3,25 +3,30 @@ import jwt
 from smtplib import SMTP
 from typing import Annotated, Any
 import uuid
+import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Response
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import EmailStr
-from sqlalchemy.exc import SQLAlchemyError
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db, get_current_active_user, get_smtp
 from ..crud.user import get_user_by_email, get_user, update_user
-from ..crud.token import invalidate_token, invalidate_all_user_access_tokens
+from ..crud.token import (
+    delete_token,
+    delete_tokens_by_type,
+    delete_session,
+)
 from ..db.models import User as UserModel
 from ..db.enums import TokenType
 from ..schemas.auth import Token, TokenPayload, ResetPasswordRequest
-from ..core.config import settings, oauth2_scheme
+from ..core.config import settings
 from ..core.utils import (
     authenticate,
     handle_token_refresh,
     send_email,
     get_html_from_template,
+    create_session,
+    delete_session_by_user_id,
 )
 from ..core.security import (
     create_token,
@@ -32,36 +37,53 @@ from ..core.debug import logger
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {
+            "description": "Successfully logged in",
+            "content": {
+                "application/json": {"example": {"message": "Successfully logged in"}}
+            },
+        }
+    },
+)
 def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    user: Annotated[UserModel, Depends(authenticate)],
     db: Annotated[Session, Depends(get_db)],
-    response: Response,
+    request: Request,
 ):
-    user = authenticate(db, email=form_data.username, password=form_data.password)
-    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    refresh_token_expires = timedelta(days=settings.refresh_token_expire_days)
-    access_token = create_token(
-        data={"sub": str(user.id)},
-        db=db,
-        expires_delta=access_token_expires,
-        token_type=TokenType.ACCESS.value,
+    # Generate session ID
+    session_id = str(uuid.uuid4())
+
+    # Store session
+    expires_at = settings.session_expire_days
+    expiry = datetime.datetime.now(datetime.UTC) + timedelta(days=expires_at)
+    data = str(user.id)
+    session_id = create_session(db=db, id=session_id, data=data, expires_at=expiry)
+    request.session["session_id"] = session_id
+
+    # Delete old session ID if it exists
+    if "session_id" in request.cookies:
+        old_session_id = request.cookies["session_id"]
+        delete_session(db, uuid.UUID(old_session_id))
+
+    # Store new session ID in cookie
+    response = JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"message": "Successfully logged in"},
     )
-    _ = create_token(
-        data={"sub": str(user.id)},
-        db=db,
-        expires_delta=refresh_token_expires,
-        token_type=TokenType.REFRESH.value,
-        response=response,
+    response.set_cookie(
+        key="session_id", value=session_id, expires=expiry, httponly=True
     )
-    return {
-        "access_token": access_token,
-        "access_token_expires_in_minutes": settings.access_token_expire_minutes,
-        "token_type": "bearer",
-    }
+
+    # Return response
+    return response
 
 
-@router.post("/refresh", response_model=Token)
+# This endpoint is deprecated, use the /login endpoint instead
+@router.post("/refresh", response_model=Token, deprecated=True, include_in_schema=False)
 def refresh_access_token(
     authorization: Annotated[str, Header(pattern="Bearer .*")],
     db: Annotated[Session, Depends(get_db)],
@@ -80,7 +102,6 @@ def refresh_access_token(
 @router.post(
     "/logout",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(get_current_active_user)],
     responses={
         200: {
             "description": "Successfully logged out",
@@ -91,36 +112,26 @@ def refresh_access_token(
     },
 )
 def logout(
-    token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[Session, Depends(get_db)],
+    request: Request,
 ):
-    credentials_exception = HTTPException(
+    HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload: dict[str, Any] = jwt.decode(
-            jwt=token,
-            key=settings.secret_key,
-            algorithms=[settings.algorithm],
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
         )
-        jti = payload.get("jti")
-        if jti is None:
-            raise credentials_exception
-        try:
-            invalidate_token(db=db, token_jti=jti, token_type=TokenType.ACCESS.value)
-        except SQLAlchemyError as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "message": "Internal server error, an error occurred while logging out",
-                    "error": str(e),
-                },
-            )
-    except jwt.PyJWTError:
-        raise credentials_exception
-    return {"message": "Successfully logged out"}
+    response = JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"message": "Successfully logged out"},
+    )
+    delete_session(db, uuid.UUID(session_id))
+    response.delete_cookie("session_id")
+    return response
 
 
 @router.post(
@@ -131,7 +142,9 @@ def logout(
             "description": "Successfully logged out all devices",
             "content": {
                 "application/json": {
-                    "example": {"message": "Successfully logged out all devices"}
+                    "example": {
+                        "message": "Successfully logged out all devices, or rather, all sessions"
+                    }
                 }
             },
         }
@@ -141,19 +154,8 @@ def logout_all(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[UserModel, Depends(get_current_active_user)],
 ):
-    try:
-        invalidate_all_user_access_tokens(db=db, user=user)
-    except SQLAlchemyError as e:
-        logger.error(f"Error deleting user tokens: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Internal server error, an error occurred while logging out all devices",
-                "error": str(e),
-            },
-        )
-    logger.info(f"User {user.id} logged out from all devices")
-    return {"message": "Successfully logged out all devices"}
+    delete_session_by_user_id(db, str(user.id))
+    return {"message": "Successfully logged out all devices, or rather, all sessions"}
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
@@ -211,10 +213,10 @@ def reset_password(
             hashed_password = hash_password(new_password.new_password)
             user = update_user(db, user, hashed_password=hashed_password)
 
-            # Invalidate the reset token
-            invalidate_token(db=db, token_jti=jti, token_type=TokenType.RESET.value)
-            # Invalidate old reset tokens
-            invalidate_all_user_access_tokens(db, user, TokenType.RESET.value)
+            # Delete token
+            delete_token(db, jti)
+            # Delete all other reset tokens
+            delete_tokens_by_type(db, user.id, TokenType.RESET.value)
             return {"message": "Password reset successful"}
     except IndexError:
         raise HTTPException(
