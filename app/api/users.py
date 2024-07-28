@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_db, get_current_active_user
+from ..dependencies import get_db, get_current_active_user, get_current_active_admin
 from ..crud.user import (
     create_user as db_create_user,
     get_user_by_email as db_get_user_by_email,
@@ -47,10 +47,11 @@ def read_users_me(
     return current_user
 
 
+# TODO: This is an admin endpoint, add it to admin router
 @router.get(
     "/{user_id}",
     response_model=User,
-    dependencies=[Depends(get_current_active_user)],
+    dependencies=[Depends(get_current_active_admin)],
     status_code=status.HTTP_200_OK,
 )
 def read_user(
@@ -62,10 +63,5 @@ def read_user(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
-        )
-    if db_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Permission denied",
         )
     return db_user

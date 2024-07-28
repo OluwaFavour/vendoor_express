@@ -57,13 +57,17 @@ def get_current_user(db: Annotated[Session, Depends(get_db)], request: Request) 
     if session_id is None:
         raise credentials_exception
     session = token_crud.get_session(db, uuid.UUID(session_id))
-    if session is None or session.expires_at.replace(
-        tzinfo=datetime.UTC
-    ) < datetime.datetime.now(datetime.UTC):
+    if session is None:
+        raise credentials_exception
+    if session.expires_at.replace(tzinfo=datetime.UTC) < datetime.datetime.now(
+        datetime.UTC
+    ):
+        token_crud.delete_session(db, session.id)
         raise credentials_exception
     user_id = uuid.UUID(session.data)
     user = user_crud.get_user(db, user_id)
     if user is None:
+        token_crud.delete_session(db, session.id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found. The user associated with this session has probably been deleted.",
@@ -80,4 +84,16 @@ def get_current_active_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This user is currently inactive",
+        )
+
+
+def get_current_active_admin(
+    current_user: Annotated[User, Depends(get_current_active_user)]
+) -> User:
+    if current_user.role == "admin":
+        return current_user
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This user does not have the necessary permissions to access this resource",
         )
