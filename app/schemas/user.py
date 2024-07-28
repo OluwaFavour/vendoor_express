@@ -21,6 +21,7 @@ class UserBase(BaseModel):
                 raise ValueError("Each name must contain at least two characters")
             if not name.isalpha():
                 raise ValueError("Each name must contain only alphabetic characters")
+        return value
 
 
 class UserCreate(UserBase):

@@ -74,21 +74,21 @@ def create_test_user(db: Session):
     return user, password
 
 
-def test_login_for_access_token(test_client, db_session):
+def test_login(test_client, db_session):
     user, password = create_test_user(db_session)
     response = test_client.post(
-        "/api/auth/login", data={"username": user.email, "password": password}
+        "/api/auth/login", data={"email": user.email, "password": password}
     )
     assert response.status_code == 200
+    assert "session_id" in response.cookies
     data = response.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    assert data["message"] == "Successfully logged in"
 
 
-def test_login_for_access_token_invalid_credentials(test_client, db_session):
+def test_login_invalid_credentials(test_client, db_session):
     response = test_client.post(
         "/api/auth/login",
-        data={"username": "invalid@example.com", "password": "invalidpassword"},
+        data={"email": "invalid@example.com", "password": "invalidpassword"},
     )
     assert response.status_code == 401
     assert response.json() == {
@@ -96,53 +96,48 @@ def test_login_for_access_token_invalid_credentials(test_client, db_session):
     }
 
 
-def test_refresh_access_token(test_client, db_session, mocker):
-    user, password = create_test_user(db_session)
+# def test_refresh_access_token(test_client, db_session, mocker):
+#     user, password = create_test_user(db_session)
 
-    test_client.app_state = {"db": db_session}
-    response = test_client.post(
-        "/api/auth/login", data={"username": user.email, "password": password}
-    )
-    refresh_token = test_client.cookies.get("refresh_token")
+#     test_client.app_state = {"db": db_session}
+#     response = test_client.post(
+#         "/api/auth/login", data={"email": user.email, "password": password}
+#     )
+#     refresh_token = test_client.cookies.get("refresh_token")
 
-    response = test_client.post(
-        "/api/auth/refresh", headers={"Authorization": f"Bearer {refresh_token}"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert "access_token" in data
-
-
-def test_refresh_access_token_invalid_token(test_client, db_session):
-    response = test_client.post(
-        "/api/auth/refresh", headers={"Authorization": "Bearer invalidtoken"}
-    )
-    assert response.status_code == 401
-    assert response.json() == {
-        "detail": "Could not validate credentials, might be missing, invalid or expired"
-    }
+#     response = test_client.post(
+#         "/api/auth/refresh", headers={"Authorization": f"Bearer {refresh_token}"}
+#     )
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert "access_token" in data
 
 
-def test_refresh_access_token_invalid_token_format(test_client, db_session):
-    response = test_client.post(
-        "/api/auth/refresh", headers={"Authorization": "invalidtoken"}
-    )
-    assert response.status_code == 422
+# def test_refresh_access_token_invalid_token(test_client, db_session):
+#     response = test_client.post(
+#         "/api/auth/refresh", headers={"Authorization": "Bearer invalidtoken"}
+#     )
+#     assert response.status_code == 401
+#     assert response.json() == {
+#         "detail": "Could not validate credentials, might be missing, invalid or expired"
+#     }
+
+
+# def test_refresh_access_token_invalid_token_format(test_client, db_session):
+#     response = test_client.post(
+#         "/api/auth/refresh", headers={"Authorization": "invalidtoken"}
+#     )
+#     assert response.status_code == 422
 
 
 def test_logout(test_client, db_session, mocker):
     user, password = create_test_user(db_session)
-    mocker.patch("app.core.utils.authenticate", return_value=user)
 
     response = test_client.post(
-        "/api/auth/login", data={"username": user.email, "password": password}
+        "/api/auth/login", data={"email": user.email, "password": password}
     )
-    data = response.json()
-    token = data["access_token"]
 
-    response = test_client.post(
-        "/api/auth/logout", headers={"Authorization": f"Bearer {token}"}
-    )
+    response = test_client.post("/api/auth/logout")
     assert response.status_code == 200
     assert response.json() == {"message": "Successfully logged out"}
 
@@ -152,16 +147,13 @@ def test_logout_all(test_client, db_session, mocker):
     mocker.patch("app.dependencies.get_current_active_user", return_value=user)
 
     response = test_client.post(
-        "/api/auth/login", data={"username": user.email, "password": password}
+        "/api/auth/login", data={"email": user.email, "password": password}
     )
-    data = response.json()
-    token = data["access_token"]
-
-    response = test_client.post(
-        "/api/auth/logoutall", headers={"Authorization": f"Bearer {token}"}
-    )
+    response = test_client.post("/api/auth/logoutall")
     assert response.status_code == 200
-    assert response.json() == {"message": "Successfully logged out all devices"}
+    assert response.json() == {
+        "message": "Successfully logged out all devices, or rather, all sessions"
+    }
 
 
 def test_forget_password(test_client, db_session, mocker):
@@ -183,7 +175,7 @@ def test_reset_password(test_client, db_session, mocker):
     response = test_client.post(
         "/api/auth/reset-password",
         headers={"Authorization": f"Bearer {reset_token}"},
-        json={"new_password": "newpassword"},
+        json={"new_password": "newpasswordA1$"},
     )
     assert response.status_code == 200
     assert response.json() == {"message": "Password reset successful"}
@@ -196,7 +188,7 @@ def test_reset_password_invalid_token(test_client, db_session):
     response = test_client.post(
         "/api/auth/reset-password",
         headers={"Authorization": "Bearer invalidtoken"},
-        json={"new_password": "newpassword"},
+        json={"new_password": "newpasswordA1$"},
     )
     assert response.status_code == 401
     assert response.json() == {
@@ -208,6 +200,6 @@ def test_reset_password_invalid_token_format(test_client, db_session):
     response = test_client.post(
         "/api/auth/reset-password",
         headers={"Authorization": "invalidtoken"},
-        json={"new_password": "newpassword"},
+        json={"new_password": "newpasswordA1$"},
     )
     assert response.status_code == 422

@@ -53,11 +53,13 @@ def get_current_user(db: Annotated[Session, Depends(get_db)], request: Request) 
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
     )
-    session_id = request.headers.get("Authorization")
+    session_id = request.cookies.get("session_id")
     if session_id is None:
         raise credentials_exception
-    session = token_crud.get_session(db, session_id)
-    if session is None or session.expires_at < datetime.datetime.now(datetime.UTC):
+    session = token_crud.get_session(db, uuid.UUID(session_id))
+    if session is None or session.expires_at.replace(
+        tzinfo=datetime.UTC
+    ) < datetime.datetime.now(datetime.UTC):
         raise credentials_exception
     user_id = uuid.UUID(session.data)
     user = user_crud.get_user(db, user_id)

@@ -40,6 +40,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 @router.post(
     "/login",
     status_code=status.HTTP_200_OK,
+    summary="Login to the application",
     responses={
         200: {
             "description": "Successfully logged in",
@@ -49,7 +50,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
         }
     },
 )
-def login_for_access_token(
+def login(
     user: Annotated[UserModel, Depends(authenticate)],
     db: Annotated[Session, Depends(get_db)],
     request: Request,
@@ -102,6 +103,7 @@ def refresh_access_token(
 @router.post(
     "/logout",
     status_code=status.HTTP_200_OK,
+    summary="Logout from the application",
     responses={
         200: {
             "description": "Successfully logged out",
@@ -115,10 +117,6 @@ def logout(
     db: Annotated[Session, Depends(get_db)],
     request: Request,
 ):
-    HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-    )
     session_id = request.cookies.get("session_id")
     if not session_id:
         raise HTTPException(
@@ -137,6 +135,7 @@ def logout(
 @router.post(
     "/logoutall",
     status_code=status.HTTP_200_OK,
+    summary="Logout from all devices",
     responses={
         200: {
             "description": "Successfully logged out all devices",
@@ -158,7 +157,11 @@ def logout_all(
     return {"message": "Successfully logged out all devices, or rather, all sessions"}
 
 
-@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+@router.post(
+    "/forgot-password",
+    status_code=status.HTTP_200_OK,
+    summary="Generate password reset link",
+)
 def forgot_password(
     email: TokenPayload,
     db: Annotated[Session, Depends(get_db)],
@@ -193,7 +196,9 @@ def forgot_password(
     return None
 
 
-@router.post("/reset-password", status_code=status.HTTP_200_OK)
+@router.post(
+    "/reset-password", status_code=status.HTTP_200_OK, summary="Reset password"
+)
 def reset_password(
     new_password: ResetPasswordRequest,
     authorization: Annotated[str, Header(pattern="Bearer .*")],
