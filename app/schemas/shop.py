@@ -1,15 +1,21 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
+import uuid
 
-from .user import UserBase
-from ..db.enums import UserRoleType
+from .user import User
+from ..db.enums import WantedHelpType
 
 
-class Shop(UserBase):
-    full_name: Optional[None] = None
-    email: Optional[None] = None
-    role: UserRoleType = UserRoleType.VENDOR
-    phone_number: Optional[str] = None
-    proof_of_identity_type: Optional[str] = None
-    proof_of_identity_image: Optional[str] = None
-    business_registration_certificate_image: Optional[str] = None
+class Shop(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    name: str
+    description: str
+    type: str
+    category: str
+    email: str
+    phone_number: str
+    wanted_help: Optional[WantedHelpType]
+    logo: str
+    is_verified: bool
+    vendor: User

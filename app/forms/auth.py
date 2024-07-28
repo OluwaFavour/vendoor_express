@@ -4,7 +4,7 @@ from fastapi import Form
 from pydantic import EmailStr
 
 
-class HTTPSessionPasswordForm:
+class LoginForm:
     def __init__(
         self,
         email: Annotated[

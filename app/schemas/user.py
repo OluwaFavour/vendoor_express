@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Optional, Annotated
 import uuid
 
-from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator, Field
 
 from ..db.enums import UserRoleType
 
@@ -25,7 +25,13 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str
+    password: Annotated[
+        str,
+        Field(
+            ...,
+            description="Password of the user, must be at least 8 characters long, contain at least one digit, one uppercase letter, one lowercase letter, one special character and must not contain spaces",
+        ),
+    ]
 
     @field_validator("password")
     def password_validator(cls, value: str):

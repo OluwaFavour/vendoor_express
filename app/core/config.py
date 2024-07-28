@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     cloudinary_url: str
     session_cookie_name: str = "session_id"
     session_expire_days: int = 14
+    same_site: str = "lax"
+    https_only: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")
 

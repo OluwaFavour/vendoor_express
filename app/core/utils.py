@@ -21,13 +21,13 @@ from .config import settings
 from .security import verify_password, refresh_access_token
 from ..db.models import User
 from ..crud import user as user_crud, token as token_crud
-from ..core.forms import HTTPSessionPasswordForm
+from ..forms.auth import LoginForm
 from ..dependencies import get_db
 
 
 def authenticate(
     db: Annotated[Session, Depends(get_db)],
-    credentials: Annotated[HTTPSessionPasswordForm, Depends()],
+    credentials: Annotated[LoginForm, Depends()],
 ) -> User:
     email = credentials.email
     password = credentials.password

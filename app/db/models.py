@@ -8,7 +8,7 @@ from .base import Base
 from .enums import (
     UserRoleType,
     ProofOfIdentityType,
-    ShopTypeType,
+    ShopType,
     PaymentMethodType,
     OrderStatusType,
     NotificationType,
@@ -145,6 +145,7 @@ class Shop(Base):
     products: Mapped[Optional[list["Product"]]] = relationship(
         back_populates="shop", cascade="save-update, merge, refresh-expire, expunge"
     )
+    is_verified: Mapped[bool] = mapped_column(nullable=False, insert_default=False)
 
     vendor_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE")
@@ -154,7 +155,7 @@ class Shop(Base):
     @validates("type")
     def validate_type(self, key, value):
         if value:
-            for enum in ShopTypeType:
+            for enum in ShopType:
                 if value == enum.value:
                     return value
             raise ValueError(f"Invalid value for {key}: {value}")

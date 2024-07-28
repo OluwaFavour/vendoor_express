@@ -4,7 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 
 from .db.init_db import init_db
-from .api import users, auth
+from .api import users, auth, shop
 from .core.config import settings
 from .middleware import auto_refresh_token_middleware
 
@@ -25,7 +25,12 @@ app = FastAPI(
 
 # ADD MIDDLEWARES
 ## ADD SESSION MIDDLEWARE
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.secret_key,
+    same_site=settings.same_site,
+    https_only=settings.https_only,
+)
 ## ADD CORS MIDDLEWARE
 app.add_middleware(
     CORSMiddleware,
@@ -40,6 +45,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(shop.router)
 
 
 @app.head("/", include_in_schema=False)

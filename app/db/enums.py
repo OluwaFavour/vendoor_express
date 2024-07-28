@@ -7,7 +7,7 @@ class ProofOfIdentityType(str, Enum):
     NATIONAL_ID = "national_id"
 
 
-class ShopTypeType(str, Enum):
+class ShopType(str, Enum):
     PRODUCTS = "products"
     SERVICES = "services"
     BOTH = "both"

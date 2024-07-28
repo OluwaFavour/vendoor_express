@@ -17,7 +17,12 @@ from ..core.debug import logger
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
-@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=User,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new user",
+)
 def create_user(
     user_scheme: UserCreate, db: Annotated[Session, Depends(get_db)]
 ) -> User:
