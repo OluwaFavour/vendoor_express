@@ -1,11 +1,19 @@
 import jwt
 from typing import Callable
 
-from fastapi import Request, HTTPException, status
+from fastapi import Request, HTTPException, status, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 from .core.debug import logger
 from .core.security import refresh_access_token, validate_token
 from .db.enums import TokenType
 from .dependencies import get_db
+
+
+class RemoveSessionCookieMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: Callable):
+        response: Response = await call_next(request)
+        response.delete_cookie("session")
+        return response
 
 
 async def auto_refresh_token_middleware(request: Request, call_next: Callable):
