@@ -20,9 +20,11 @@ from .enums import (
 class SessionData(Base):
     __tablename__ = "sessions"
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, nullable=False)
-    data: Mapped[str] = mapped_column(nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(nullable=False, index=True)
+    user_agent: Mapped[Optional[str]] = mapped_column(nullable=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(nullable=True)
     expires_at: Mapped[datetime.datetime] = mapped_column(nullable=False, index=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
+    logged_in_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
     )
 
@@ -59,7 +61,7 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
     full_name: Mapped[str] = mapped_column(nullable=False)
     email: Mapped[str] = mapped_column(nullable=False, unique=True)
-    phone_number: Mapped[Optional[str]] = mapped_column(nullable=True)
+    phone_number: Mapped[Optional[str]] = mapped_column(nullable=True, unique=True)
     hashed_password: Mapped[str] = mapped_column(nullable=False)
     proof_of_identity_type: Mapped[Optional[str]] = mapped_column(
         nullable=True, comment="Type of proof of identity"
@@ -138,8 +140,8 @@ class Shop(Base):
     description: Mapped[str] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column(nullable=False, index=True)
     category: Mapped[str] = mapped_column(nullable=False, index=True)
-    email: Mapped[str] = mapped_column(nullable=False)
-    phone_number: Mapped[str] = mapped_column(nullable=False)
+    email: Mapped[str] = mapped_column(nullable=False, unique=True)
+    phone_number: Mapped[str] = mapped_column(nullable=False, unique=True)
     wanted_help: Mapped[Optional[str]] = mapped_column(nullable=True)
     logo: Mapped[str] = mapped_column(nullable=False, comment="URL to the image")
     products: Mapped[Optional[list["Product"]]] = relationship(
@@ -148,7 +150,7 @@ class Shop(Base):
     is_verified: Mapped[bool] = mapped_column(nullable=False, insert_default=False)
 
     vendor_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("user.id", ondelete="CASCADE")
+        ForeignKey("user.id", ondelete="CASCADE"), unique=True
     )
     vendor: Mapped["User"] = relationship(back_populates="shop")
 

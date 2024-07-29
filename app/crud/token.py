@@ -39,21 +39,29 @@ def store_session(
     db: Session,
     session_id: uuid.UUID,
     data: str,
+    user_agent: str,
+    ip_address: str,
     expires_at: datetime.datetime,
 ) -> SessionModel:
-    session = SessionModel(id=session_id, data=data, expires_at=expires_at)
+    session = SessionModel(
+        id=session_id,
+        user_id=data,
+        expires_at=expires_at,
+        user_agent=user_agent,
+        ip_address=ip_address,
+    )
     db.add(session)
     db.commit()
     db.refresh(session)
     return session
 
 
-def get_session_by_data(db: Session, data: str) -> SessionModel | None:
-    return db.execute(select(SessionModel).filter_by(data=data)).scalar_one_or_none()
+def get_session_by_user_id(db: Session, data: str) -> SessionModel | None:
+    return db.execute(select(SessionModel).filter_by(user_id=data)).scalar_one_or_none()
 
 
-def delete_session_by_data(db: Session, data: str) -> None:
-    db.execute(delete(SessionModel).filter_by(data=data))
+def delete_session_by_user_id(db: Session, data: str) -> None:
+    db.execute(delete(SessionModel).filter_by(user_id=data))
     db.commit()
 
 
@@ -62,8 +70,8 @@ def delete_session(db: Session, session_id: uuid.UUID) -> None:
     db.commit()
 
 
-def delete_sessions_by_data(db: Session, data: str) -> None:
-    db.execute(delete(SessionModel).filter_by(data=data))
+def delete_sessions_by_user_id(db: Session, data: str) -> None:
+    db.execute(delete(SessionModel).filter_by(user_id=data))
     db.commit()
 
 

@@ -51,10 +51,17 @@ def create_session(
     db: Annotated[Session, Depends(get_db)],
     id: str,
     data: str,
+    user_agent: str,
+    ip_address: str,
     expires_at: datetime.datetime,
 ) -> str:
     session = token_crud.store_session(
-        db=db, session_id=uuid.UUID(id), data=data, expires_at=expires_at
+        db=db,
+        session_id=uuid.UUID(id),
+        data=data,
+        expires_at=expires_at,
+        user_agent=user_agent,
+        ip_address=ip_address,
     )
     return str(session.id)
 
@@ -62,7 +69,7 @@ def create_session(
 def delete_session_by_user_id(
     db: Annotated[Session, Depends(get_db)], user_id: str
 ) -> None:
-    token_crud.delete_sessions_by_data(db, user_id)
+    token_crud.delete_sessions_by_user_id(db, user_id)
 
 
 def handle_token_refresh(refresh_token: str, db: Session) -> dict[str, str]:

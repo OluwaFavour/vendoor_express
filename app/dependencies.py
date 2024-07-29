@@ -64,7 +64,7 @@ def get_current_user(db: Annotated[Session, Depends(get_db)], request: Request) 
     ):
         token_crud.delete_session(db, session.id)
         raise credentials_exception
-    user_id = uuid.UUID(session.data)
+    user_id = uuid.UUID(session.user_id)
     user = user_crud.get_user(db, user_id)
     if user is None:
         token_crud.delete_session(db, session.id)

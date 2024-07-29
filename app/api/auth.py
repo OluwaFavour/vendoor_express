@@ -33,7 +33,7 @@ from ..core.security import (
     hash_password,
 )
 from ..core.debug import logger
-from ..crud.token import get_session_by_data
+from ..crud.token import get_session_by_user_id
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -56,26 +56,42 @@ def login(
     db: Annotated[Session, Depends(get_db)],
     request: Request,
 ):
-    # Generate session ID
-    session_id = str(uuid.uuid4())
-
+    # Get session data
     data = str(user.id)
+
     # Delete old session IDs if they exists
     delete_session_by_user_id(db, data)
     if "session_id" in request.cookies:
         old_session_id = request.cookies["session_id"]
         delete_session(db, uuid.UUID(old_session_id))
 
+    # Get user agent and IP address
+    user_agent = request.headers.get("User-Agent")
+    ip_address = request.client.host
+
+    # Generate session ID
+    session_id = str(uuid.uuid4())
     # Store session
     expires_at = settings.session_expire_days
     expiry = datetime.datetime.now(datetime.UTC) + timedelta(days=expires_at)
-    session_id = create_session(db=db, id=session_id, data=data, expires_at=expiry)
+    session_id = create_session(
+        db=db,
+        id=session_id,
+        data=data,
+        expires_at=expiry,
+        user_agent=user_agent,
+        ip_address=ip_address,
+    )
     request.session["session_id"] = session_id
 
     # Store new session ID in cookie
     response = JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={"message": "Successfully logged in"},
+        content={
+            "message": "Successfully logged in",
+            "user_agent": user_agent,
+            "ip_address": ip_address,
+        },
     )
     response.set_cookie(
         key=settings.session_cookie_name,

@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from ..db.models import User as UserModel
 from ..schemas.shop import Shop
@@ -24,5 +25,11 @@ def create_vendor_profile(
     vendor_profile: Annotated[VendorProfileCreationForm, Depends()],
     user: Annotated[UserModel, Depends(get_current_active_user)],
 ):
-    shop = create_shop(db, vendor_profile, user)
-    return shop
+    try:
+        shop = create_shop(db, vendor_profile, user)
+        return shop
+    except IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e.orig),
+        )

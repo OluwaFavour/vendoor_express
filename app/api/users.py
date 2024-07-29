@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from ..dependencies import get_db, get_current_active_user, get_current_active_admin
 from ..crud.user import (
@@ -34,12 +35,10 @@ def create_user(
         )
     try:
         new_user = db_create_user(db, user_scheme)
-        logger.info(f"User created: {new_user.id}")
-    except Exception as e:
-        logger.error(f"Error creating user: {e}")
+    except IntegrityError as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e.orig),
         )
     else:
         return new_user

@@ -23,6 +23,10 @@ class UserBase(BaseModel):
                 raise ValueError("Each name must contain only alphabetic characters")
         return value
 
+    @field_validator("email")
+    def email_validator(cls, value: str):
+        return value.lower()
+
 
 class UserCreate(UserBase):
     password: Annotated[

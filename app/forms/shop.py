@@ -21,7 +21,7 @@ class VendorProfileCreationValidator:
         image_format = image.content_type
         if (
             image_format not in allowed_formats.keys()
-            or image_ext not in allowed_formats.values()
+            or image_ext.lower() not in allowed_formats.values()
         ):
             raise ValueError(
                 "Only jpeg, jpg and png formats are allowed, check the image format of the {}".format(
@@ -106,7 +106,7 @@ class VendorProfileCreationForm:
         self.role = role.value
         self.name = name
         self.description = description
-        self.email = email
+        self.email = email.lower()
         self.phone_number = phone_number
         self.type = type
         self.category = category
