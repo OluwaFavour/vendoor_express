@@ -50,7 +50,7 @@ def test_create_user_success(test_client, db_session):
     user_data = {
         "full_name": "Test User",
         "email": "test@example.com",
-        "password": "password123",
+        "password": "Password@123",
         "role": "user",
     }
     response = test_client.post("/api/users/", json=user_data)
@@ -65,7 +65,7 @@ def test_create_user_email_already_in_use(test_client, db_session):
     user_data = {
         "full_name": "Test User",
         "email": "test@example.com",
-        "password": "password123",
+        "password": "Password@123",
         "role": "user",
     }
     response = test_client.post("/api/users/", json=user_data)
