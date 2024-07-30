@@ -39,6 +39,11 @@ class UserRoleType(str, Enum):
     ADMIN = "admin"
 
 
+class OperatorType(str, Enum):
+    AND = "and"
+    OR = "or"
+
+
 class TokenType(str, Enum):
     ACCESS = "access"
     REFRESH = "refresh"
@@ -50,3 +55,11 @@ class WantedHelpType(str, Enum):
     GAINING_NEW_CUSTOMERS = "gaining_new_customers"
     PACKAGING_AND_SHIPPING = "packaging_and_shipping"
     SELL_ONLINE = "sell_online"
+
+
+class VendorStatusType(str, Enum):
+    PENDING = "pending"
+    VERIFIED = "verified"
+    SUSPENDED = "suspended"
+    REJECTED = "rejected"
+    DELETED = "deleted"

@@ -14,6 +14,7 @@ from .enums import (
     NotificationType,
     TokenType,
     WantedHelpType,
+    VendorStatusType,
 )
 
 
@@ -149,7 +150,9 @@ class Shop(Base):
     products: Mapped[Optional[list["Product"]]] = relationship(
         back_populates="shop", cascade="save-update, merge, refresh-expire, expunge"
     )
-    is_verified: Mapped[bool] = mapped_column(nullable=False, insert_default=False)
+    status: Mapped[str] = mapped_column(
+        nullable=False, insert_default=VendorStatusType.PENDING.value, index=True
+    )
 
     vendor_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE"), unique=True
@@ -169,6 +172,15 @@ class Shop(Base):
     def validate_wanted_help(self, key, value):
         if value:
             for enum in WantedHelpType:
+                if value == enum.value:
+                    return value
+            raise ValueError(f"Invalid value for {key}: {value}")
+        return value
+
+    @validates("status")
+    def validate_status(self, key, value):
+        if value:
+            for enum in VendorStatusType:
                 if value == enum.value:
                     return value
             raise ValueError(f"Invalid value for {key}: {value}")
