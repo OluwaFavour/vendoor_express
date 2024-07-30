@@ -52,13 +52,6 @@ class UserCreate(UserBase):
         return value
 
 
-class VendorProfileCreate(UserBase):
-    phone_number: Optional[str] = None
-    proof_of_identity_type: Optional[str] = None
-    proof_of_identity_image: Optional[str] = None
-    business_registration_certificate_image: Optional[str] = None
-
-
 class User(UserBase):
     model_config = ConfigDict(from_attributes=True)
 

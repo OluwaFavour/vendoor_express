@@ -2,7 +2,6 @@ import uuid
 from typing import Any
 
 from sqlalchemy import update
-from sqlalchemy.exc import NoResultFound
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 

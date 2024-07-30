@@ -12,17 +12,15 @@ from sqlalchemy.orm import Session
 from ..dependencies import get_db, get_current_active_user, get_smtp
 from ..crud.user import get_user_by_email, get_user, update_user
 from ..crud.token import (
-    delete_token,
-    delete_tokens_by_type,
+    delete_user_tokens,
     delete_session,
 )
 from ..db.models import User as UserModel
 from ..db.enums import TokenType
-from ..schemas.auth import Token, TokenPayload, ResetPasswordRequest
+from ..schemas.auth import TokenPayload, ResetPasswordRequest
 from ..core.config import settings
 from ..core.utils import (
     authenticate,
-    handle_token_refresh,
     send_email,
     get_html_from_template,
     create_session,
@@ -31,9 +29,8 @@ from ..core.utils import (
 from ..core.security import (
     create_token,
     hash_password,
+    verify_token,
 )
-from ..core.debug import logger
-from ..crud.token import get_session_by_user_id
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -104,23 +101,6 @@ def login(
 
     # Return response
     return response
-
-
-# This endpoint is deprecated, use the /login endpoint instead
-@router.post("/refresh", response_model=Token, deprecated=True, include_in_schema=False)
-def refresh_access_token(
-    authorization: Annotated[str, Header(pattern="Bearer .*")],
-    db: Annotated[Session, Depends(get_db)],
-):
-    try:
-        refresh_token = authorization.split(" ")[1]
-        return handle_token_refresh(refresh_token=refresh_token, db=db)
-    except IndexError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
 
 @router.post(
@@ -227,34 +207,24 @@ def reset_password(
     authorization: Annotated[str, Header(pattern="Bearer .*")],
     db: Annotated[Session, Depends(get_db)],
 ):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials, might be missing, invalid or expired",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         token = authorization.split(" ")[1]
-        payload: dict[str, Any] = jwt.decode(
-            jwt=token,
-            key=settings.secret_key,
-            algorithms=[settings.algorithm],
+        user_id, _ = verify_token(
+            token=token, credentials_exception=credentials_exception
         )
-        user_id = payload.get("sub")
-        jti = payload.get("jti")
-        user = get_user(db, uuid.UUID(user_id))
-        if user:
-            hashed_password = hash_password(new_password.new_password)
-            user = update_user(db, user, hashed_password=hashed_password)
+        user = get_user(db, user_id)
+        if not user:
+            raise credentials_exception
+        hashed_password = hash_password(new_password.new_password)
+        user = update_user(db, user, hashed_password=hashed_password)
 
-            # Delete token
-            delete_token(db, jti)
-            # Delete all other reset tokens
-            delete_tokens_by_type(db, user.id, TokenType.RESET.value)
-            return {"message": "Password reset successful"}
-    except IndexError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        # Delete all tokens for the user
+        delete_user_tokens(db, user)
+        return {"message": "Password reset successful"}
     except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials, might be missing, invalid or expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise credentials_exception

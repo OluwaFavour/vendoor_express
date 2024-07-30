@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from .db.init_db import init_db
 from .api import users, auth, shop
 from .core.config import settings
-from .middleware import auto_refresh_token_middleware, RemoveSessionCookieMiddleware
+from .middleware import RemoveSessionCookieMiddleware
 
 
 @asynccontextmanager
@@ -31,7 +31,10 @@ app.add_middleware(
     same_site=settings.same_site,
     https_only=settings.https_only,
 )
+
+## ADD REMOVE SESSION COOKIE MIDDLEWARE
 app.add_middleware(RemoveSessionCookieMiddleware)
+
 ## ADD CORS MIDDLEWARE
 app.add_middleware(
     CORSMiddleware,
@@ -40,8 +43,6 @@ app.add_middleware(
     allow_methods=settings.allowed_methods,
     allow_headers=["*"],
 )
-## ADD AUTO REFRESH TOKEN MIDDLEWARE
-# app.middleware("http")(auto_refresh_token_middleware)
 
 
 app.include_router(auth.router)

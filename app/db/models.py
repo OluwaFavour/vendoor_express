@@ -1,5 +1,5 @@
 import datetime, uuid, decimal
-from typing import Optional, Any
+from typing import Optional
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship, validates
 from sqlalchemy import ForeignKey, func, SmallInteger, CheckConstraint

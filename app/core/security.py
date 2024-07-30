@@ -56,7 +56,6 @@ def create_token(
     db: Session,
     token_type: str,
     expires_delta: datetime.timedelta,
-    response: Optional[Response] = None,
 ) -> str:
     to_encode = data.copy()
     expire = datetime.datetime.now(datetime.UTC) + expires_delta
@@ -73,77 +72,4 @@ def create_token(
         user_id=uuid.UUID(data["sub"]),
         token_type=token_type,
     )
-
-    if token_type == TokenType.REFRESH.value:
-        if response is not None:
-            response.set_cookie(
-                key="refresh_token",
-                value=encoded_jwt,
-                httponly=True,
-                max_age=settings.refresh_token_expire_days * 24 * 60 * 60,  # in seconds
-            )
-        else:
-            raise ValueError("Response object is required for refresh token")
-
     return encoded_jwt
-
-
-def validate_token(token: str, token_type: str, db: Session) -> User:
-    """
-    Validate the token
-    ### Arguments
-    token (str): The token
-    token_type (str): The token type
-    db (Session): The database session
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        user_id, jti = verify_token(token, credentials_exception=credentials_exception)
-    except jwt.PyJWTError as e:
-        raise jwt.PyJWTError(f"Invalid token: {e}")
-    except HTTPException as e:
-        raise credentials_exception
-    # Get the user from the database
-    user = user_crud.get_user(db=db, user_id=user_id)
-    if user is None:
-        raise credentials_exception
-    # Check the token in the database
-    db_token = token_crud.get_token(db, jti)
-    if db_token is None or db_token.user_id != user_id or db_token.is_active is False:
-        raise credentials_exception
-    if db_token.expires_at.replace(tzinfo=datetime.UTC) < datetime.datetime.now(
-        datetime.UTC
-    ):
-        token_crud.invalidate_token(db=db, token_jti=jti, token_type=token_type)
-        raise jwt.PyJWTError("Expired token")
-    return user
-
-
-def refresh_access_token(refresh_token: str, db: Session) -> str:
-    """
-    Refresh the access token
-    ### Arguments
-    refresh_token (str): The refresh token
-    db (Session): The database session
-    """
-    try:
-        user = validate_token(refresh_token, TokenType.REFRESH.value, db)
-    except jwt.PyJWTError or HTTPException:
-        raise jwt.PyJWTError("Could not validate credentials")
-
-    # Create a new access token
-    access_token_expires = datetime.timedelta(
-        minutes=settings.access_token_expire_minutes
-    )
-    access_token = create_token(
-        data={"sub": str(user.id)},
-        db=db,
-        expires_delta=access_token_expires,
-        token_type=TokenType.ACCESS.value,
-    )
-
-    return access_token

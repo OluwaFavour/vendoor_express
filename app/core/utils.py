@@ -1,4 +1,3 @@
-import jwt
 import uuid
 import datetime
 from jinja2 import FileSystemLoader, Environment
@@ -18,7 +17,7 @@ from fastapi import HTTPException, status, Depends
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .security import verify_password, refresh_access_token
+from .security import verify_password
 from ..db.models import User
 from ..crud import user as user_crud, token as token_crud
 from ..forms.auth import LoginForm
@@ -69,23 +68,7 @@ def create_session(
 def delete_session_by_user_id(
     db: Annotated[Session, Depends(get_db)], user_id: str
 ) -> None:
-    token_crud.delete_sessions_by_user_id(db, user_id)
-
-
-def handle_token_refresh(refresh_token: str, db: Session) -> dict[str, str]:
-    try:
-        new_access_token = refresh_access_token(refresh_token=refresh_token, db=db)
-        return {
-            "access_token": new_access_token,
-            "access_token_expires_in_minutes": settings.access_token_expire_minutes,
-            "token_type": "bearer",
-        }
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials, might be missing, invalid or expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    token_crud.delete_session_by_user_id(db, user_id)
 
 
 def create_email_message(

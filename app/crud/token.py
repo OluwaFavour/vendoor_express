@@ -70,35 +70,10 @@ def delete_session(db: Session, session_id: uuid.UUID) -> None:
     db.commit()
 
 
-def delete_sessions_by_user_id(db: Session, data: str) -> None:
-    db.execute(delete(SessionModel).filter_by(user_id=data))
-    db.commit()
-
-
 def get_session(db: Session, session_id: uuid.UUID) -> SessionModel | None:
     return db.execute(
         select(SessionModel).filter_by(id=session_id)
     ).scalar_one_or_none()
-
-
-def invalidate_token(db: Session, token_type: str, token_jti: str) -> None:
-    db.execute(
-        update(TokenModel)
-        .filter_by(jti=token_jti, token_type=token_type)
-        .values(is_active=False)
-    )
-    db.commit()
-
-
-def invalidate_all_user_access_tokens(
-    db: Session, user: UserModel, token_type: Optional[str] = TokenType.ACCESS.value
-) -> None:
-    db.execute(
-        update(TokenModel)
-        .filter_by(user_id=user.id, is_active=True, token_type=token_type)
-        .values(is_active=False)
-    )
-    db.commit()
 
 
 def get_token(db: Session, token_jti: str) -> TokenModel | None:
