@@ -63,7 +63,12 @@ def read_users(
     if is_shop_owner is not None:
         filters.append(UserModel.is_shop_owner == is_shop_owner)
 
-    final_filter = and_(*filters) if operator == OperatorType.AND else or_(*filters)
+    if not filters:
+        final_filter = (
+            and_(True, *filters)
+            if operator == OperatorType.AND
+            else or_(True, *filters)
+        )
 
     query = select(UserModel).filter(final_filter).offset(skip).limit(limit)
 
@@ -73,7 +78,7 @@ def read_users(
 
 
 @router.put(
-    "/users/{user_id}/admin",
+    "/users/{user_id}/make-admin",
     response_model=User,
     dependencies=[Depends(get_current_active_admin)],
     status_code=status.HTTP_200_OK,
