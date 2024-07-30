@@ -57,3 +57,4 @@ class User(UserBase):
 
     id: uuid.UUID
     is_active: bool
+    is_first_login: Optional[bool]

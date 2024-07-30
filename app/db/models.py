@@ -74,6 +74,7 @@ class User(Base):
     )
     is_active: Mapped[bool] = mapped_column(nullable=False, insert_default=True)
     is_shop_owner: Mapped[bool] = mapped_column(nullable=False, insert_default=False)
+    is_first_login: Mapped[Optional[bool]] = mapped_column(nullable=True)
     role: Mapped[str] = mapped_column(
         nullable=False, index=True, insert_default=f"{UserRoleType.USER.value}"
     )
