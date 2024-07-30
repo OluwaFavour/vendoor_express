@@ -43,10 +43,6 @@ def authenticate(
             detail="Password is incorrect.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if user.is_first_login is None:
-        user_crud.update_user(db, user, first_login=True)
-    else:
-        user_crud.update_user(db, user, first_login=False)
     return user
 
 

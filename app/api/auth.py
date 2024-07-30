@@ -81,15 +81,23 @@ def login(
     )
     request.session["session_id"] = session_id
 
-    # Store new session ID in cookie
+    # Update user's first login status
+    if user.is_first_login is None:
+        update_user(db, user, is_first_login=True)
+    else:
+        update_user(db, user, is_first_login=False)
+
+    # Create response
     response = JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
             "message": "Successfully logged in",
             "user_agent": user_agent,
             "ip_address": ip_address,
+            "is_first_login": user.is_first_login,
         },
     )
+    # Store new session ID in cookie
     response.set_cookie(
         key=settings.session_cookie_name,
         value=session_id,
