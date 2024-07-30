@@ -1,9 +1,12 @@
 import pytest
+from typing import Optional
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
+
+from app.db.models import User
 
 from app.dependencies import get_db
 from app.db.models import Base
@@ -36,7 +39,7 @@ def db_session():
         connection.close()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def test_client():
     client = TestClient(app)
     yield client
@@ -56,3 +59,22 @@ def override_get_db():
 
 
 app.dependency_overrides[get_db] = override_get_db
+
+
+def create_test_user(
+    db: Session, role: str = "user", email: str = "userrt@example.com"
+) -> tuple[User, str]:
+    from app.core.security import hash_password
+
+    password = "testpassword"
+    hashed_password = hash_password(password)
+    user = User(
+        full_name="Test User",
+        email=email,
+        hashed_password=hashed_password,
+        role=role,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user, password

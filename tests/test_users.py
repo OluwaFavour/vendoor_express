@@ -1,48 +1,7 @@
 import pytest
 
-# from sqlalchemy import create_engine
-# from sqlalchemy.orm import sessionmaker
-# from sqlalchemy.pool import StaticPool
-
-# from app.dependencies import get_db
-# from app.db.models import Base
-# from app.main import app
-
-# # Setup the database for testing
-# SQLALCHEMY_DATABASE_URL = "sqlite://"
-# engine = create_engine(
-#     SQLALCHEMY_DATABASE_URL,
-#     connect_args={"check_same_thread": False},
-#     poolclass=StaticPool,
-# )
-# TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# # Create the database tables
-# Base.metadata.create_all(bind=engine)
-
-
-# # Override the get_db dependency to use the testing database
-# def override_get_db():
-#     try:
-#         db = TestingSessionLocal()
-#         yield db
-#     finally:
-#         db.close()
-
-
-# app.dependency_overrides[get_db] = override_get_db
-
-
-# @pytest.fixture(scope="module")
-# def db_session():
-#     # Create a new database session for each test
-#     session = TestingSessionLocal()
-#     try:
-#         yield session
-#     finally:
-#         session.close()
-#         # Drop tables to reset the database state
-#         Base.metadata.drop_all(bind=engine)
+from .conftest import create_test_user
+from app.core.debug import logger
 
 
 def test_create_user_success(test_client):
@@ -68,5 +27,20 @@ def test_create_user_email_already_in_use(test_client):
         "role": "user",
     }
     response = test_client.post("/api/users/", json=user_data)
+    response = test_client.post("/api/users/", json=user_data)
     assert response.status_code == 400
     assert response.json() == {"detail": "Email already in use"}
+
+
+@pytest.mark.usefixtures("db_session")
+def test_read_users_me(test_client, db_session):
+    user, password = create_test_user(db_session)
+    response = test_client.post(
+        "/api/auth/login",
+        data={"email": user.email, "password": password},
+    )
+    response = test_client.get("/api/users/me")
+    logger.debug(f"Response: {response.json()}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == user.email

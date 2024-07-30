@@ -4,18 +4,16 @@ import smtplib
 from unittest.mock import Mock
 
 from sqlalchemy.future import select
-from sqlalchemy.orm import Session
 
 from app.dependencies import get_smtp
-from app.db.models import Base, User
-from app.core.security import hash_password, create_token, verify_password
-
+from app.db.models import User
+from app.core.security import create_token, verify_password
 from app.core.debug import logger
 from app.core.config import settings
 from app.crud import user as user_crud
 from app.db.enums import TokenType
 
-from .conftest import app
+from .conftest import app, create_test_user
 
 
 # SMTP connection for testing
@@ -28,20 +26,6 @@ def get_test_smtp():
         yield smtp
     finally:
         smtp.quit()
-
-
-def create_test_user(db: Session):
-    password = "testpassword"
-    hashed_password = hash_password(password)
-    user = User(
-        full_name="Test User",
-        email="userrt@example.com",
-        hashed_password=hashed_password,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user, password
 
 
 @pytest.mark.usefixtures("db_session")
@@ -68,6 +52,7 @@ def test_login_invalid_credentials(test_client):
     }
 
 
+@pytest.mark.usefixtures("db_session")
 def test_logout(test_client, db_session, mocker):
     user, password = create_test_user(db_session)
 
@@ -80,6 +65,7 @@ def test_logout(test_client, db_session, mocker):
     assert response.json() == {"message": "Successfully logged out"}
 
 
+@pytest.mark.usefixtures("db_session")
 def test_logout_all(test_client, db_session):
     user, password = create_test_user(db_session)
     response = test_client.post(
@@ -93,6 +79,7 @@ def test_logout_all(test_client, db_session):
     }
 
 
+@pytest.mark.usefixtures("db_session")
 def test_forget_password(test_client, db_session, monkeypatch):
     mock_smtp = Mock(spec=smtplib.SMTP)
     monkeypatch.setattr(smtplib, "SMTP", mock_smtp)
@@ -106,6 +93,7 @@ def test_forget_password(test_client, db_session, monkeypatch):
     app.dependency_overrides.pop(get_smtp)
 
 
+@pytest.mark.usefixtures("db_session")
 def test_reset_password(test_client, db_session):
     user, _ = create_test_user(db_session)
     reset_token = create_token(
