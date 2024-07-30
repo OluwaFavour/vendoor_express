@@ -140,12 +140,16 @@ class Shop(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
     name: Mapped[str] = mapped_column(nullable=False, unique=True)
+    tag: Mapped[Optional[str]] = mapped_column(nullable=True)
     description: Mapped[str] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column(nullable=False, index=True)
     category: Mapped[str] = mapped_column(nullable=False, index=True)
     email: Mapped[str] = mapped_column(nullable=False, unique=True)
     phone_number: Mapped[str] = mapped_column(nullable=False, unique=True)
     wanted_help: Mapped[Optional[str]] = mapped_column(nullable=True)
+    cover_photo: Mapped[Optional[str]] = mapped_column(
+        nullable=True, comment="URL to the image"
+    )
     logo: Mapped[str] = mapped_column(nullable=False, comment="URL to the image")
     products: Mapped[Optional[list["Product"]]] = relationship(
         back_populates="shop", cascade="save-update, merge, refresh-expire, expunge"

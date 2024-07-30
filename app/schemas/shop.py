@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, HttpUrl
 from typing import Optional
 import uuid
 
@@ -13,9 +13,9 @@ class Shop(BaseModel):
     description: str
     type: str
     category: str
-    email: str
+    email: EmailStr
     phone_number: str
     wanted_help: Optional[WantedHelpType]
-    logo: str
-    is_verified: bool
+    logo: HttpUrl
+    status: str
     vendor: User
