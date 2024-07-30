@@ -1,5 +1,5 @@
 import uuid
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy import update
 from sqlalchemy.future import select
@@ -27,10 +27,6 @@ def update_user(db: Session, user: UserModel, **kwargs) -> UserModel:
     db.execute(update(UserModel).filter_by(id=user.id).values(**values))
     db.commit()
     return get_user(db, user.id)
-
-
-def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[UserModel]:
-    return db.execute(select(UserModel).offset(skip).limit(limit)).scalars().all()
 
 
 def create_user(db: Session, user: UserCreate) -> UserModel:

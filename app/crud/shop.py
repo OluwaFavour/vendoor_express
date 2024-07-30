@@ -47,6 +47,7 @@ def create_shop(db: Session, form_data: VendorProfileCreationForm, user: User) -
         proof_of_identity_type=proof_of_identity_type,
         proof_of_identity_image=proof_of_identity_image_url,
         business_registration_certificate_image=business_registration_certificate_image_url,
+        is_shop_owner=True,
     )
 
     # Upload Image to cloudinary

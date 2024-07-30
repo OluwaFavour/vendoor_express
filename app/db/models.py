@@ -73,6 +73,7 @@ class User(Base):
         nullable=True, comment="URL to the image"
     )
     is_active: Mapped[bool] = mapped_column(nullable=False, insert_default=True)
+    is_shop_owner: Mapped[bool] = mapped_column(nullable=False, insert_default=False)
     role: Mapped[str] = mapped_column(
         nullable=False, index=True, insert_default=f"{UserRoleType.USER.value}"
     )
