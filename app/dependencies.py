@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from .core.config import settings
 from .core.debug import logger
 from .crud import user as user_crud, token as token_crud
-from .db.enums import UserRoleType
+from .db.enums import UserRoleType, VendorStatusType
 from .db.models import User
 from .db.session import SessionLocal
 
@@ -105,6 +105,18 @@ def get_current_active_vendor(
 ) -> User:
     if current_user.role == UserRoleType.VENDOR.value:
         return current_user
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This user does not have the necessary permissions to access this resource",
+        )
+
+
+def get_current_active_verified_vendor(
+    current_vendor: Annotated[User, Depends(get_current_active_vendor)]
+) -> User:
+    if current_vendor.status == VendorStatusType.VERIFIED.value:
+        return current_vendor
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

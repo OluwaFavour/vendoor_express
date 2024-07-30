@@ -194,6 +194,7 @@ def forgot_password(
             template="password_reset.html",
             reset_link=reset_link,
             user_name=user.full_name,
+            reset_link_expiry=settings.reset_token_expire_minutes,
         )
         send_email(
             smtp=smtp,

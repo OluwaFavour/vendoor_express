@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 
 from fastapi import Form, UploadFile, File
 from pydantic import EmailStr
@@ -127,4 +127,89 @@ class VendorProfileCreationForm:
             "category": self.category,
             "wanted_help": self.wanted_help,
             "user_role": self.role,
+        }
+
+
+class ShopUpdateForm:
+    def __init__(
+        self,
+        name: Annotated[
+            Optional[str], Form(title="Shop Name", description="Name of the shop")
+        ] = None,
+        tag: Annotated[
+            Optional[str], Form(title="Shop Tag", description="Tag of the shop")
+        ] = None,
+        description: Annotated[
+            Optional[str],
+            Form(title="Shop Description", description="Description of the shop"),
+        ] = None,
+        email: Annotated[
+            Optional[EmailStr],
+            Form(title="Shop Email", description="Email of the shop"),
+        ] = None,
+        logo: Annotated[
+            Optional[UploadFile],
+            File(title="Shop Logo", description="Logo of the shop"),
+        ] = None,
+        cover_photo: Annotated[
+            Optional[UploadFile],
+            File(title="Shop Cover Photo", description="Cover photo of the shop"),
+        ] = None,
+        location: Annotated[
+            Optional[str],
+            Form(title="Shop Location", description="Location of the shop"),
+        ] = None,
+    ):
+        images = {
+            "logo": logo,
+            "cover_photo": cover_photo,
+        }
+        for field, image in images.items():
+            if image is not None:
+                VendorProfileCreationValidator.validate_image(image, field)
+        self.name = name
+        self.tag = tag
+        self.description = description
+        self.email = email
+        self.logo = logo
+        self.cover_photo = cover_photo
+        self.location = location
+
+    def dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "tag": self.tag,
+            "description": self.description,
+            "email": self.email,
+            "logo": self.logo,
+            "cover_photo": self.cover_photo,
+            "location": self.location,
+        }
+
+
+class StaffMemberForm:
+    def __init__(
+        self,
+        full_name: Annotated[
+            Optional[str],
+            Form(title="Full Name", description="Full name of the staff member"),
+        ] = None,
+        role: Annotated[
+            Optional[str], Form(title="Role", description="Role of the staff member")
+        ] = None,
+        profile_image: Annotated[
+            Optional[UploadFile],
+            File(title="Profile Image", description="Image of the staff member"),
+        ] = None,
+    ):
+        VendorProfileCreationValidator.validate_image(profile_image, "profile_image")
+        self.full_name = full_name
+        self.role = role
+        self.profile_image = profile_image
+
+    def dict(self) -> dict[str, Any]:
+        return {
+            "full_name": self.full_name,
+            "role": self.role,
+            "profile_image": self.profile_image,
         }

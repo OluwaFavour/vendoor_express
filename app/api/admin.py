@@ -2,13 +2,15 @@ import uuid
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 
 from ..dependencies import get_db, get_current_active_admin
 from ..crud.user import get_user
+from ..crud.shop import get_shop
 from ..core.debug import logger
-from ..db.enums import UserRoleType
+from ..db.enums import OperatorType, UserRoleType, VendorStatusType
 from ..db.models import User as UserModel
 from ..schemas.user import User
 
@@ -41,27 +43,32 @@ def read_user(
     status_code=status.HTTP_200_OK,
 )
 def read_users(
-    db: Annotated[Session, Depends(get_db)],
-    role: Annotated[Optional[UserRoleType], Query()] = None,
-    is_active: Annotated[Optional[bool], Query()] = None,
-    is_shop_owner: Annotated[Optional[bool], Query()] = None,
+    db: Session = Depends(get_db),
+    role: Optional[UserRoleType] = Query(None),
+    is_active: Optional[bool] = Query(None),
+    is_shop_owner: Optional[bool] = Query(None),
+    operator: OperatorType = Query(OperatorType.AND),
     skip: int = 0,
     limit: int = 100,
 ) -> list[User]:
-    db_users = (
-        db.execute(
-            select(UserModel)
-            .filter(
-                UserModel.role == role if role else True,
-                UserModel.is_active == is_active if is_active else True,
-                UserModel.is_shop_owner == is_shop_owner if is_shop_owner else True,
-            )
-            .offset(skip)
-            .limit(limit)
+    if operator not in [OperatorType.AND, OperatorType.OR]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid operator"
         )
-        .scalars()
-        .all()
-    )
+    filters = []
+    if role is not None:
+        filters.append(UserModel.role == role)
+    if is_active is not None:
+        filters.append(UserModel.is_active == is_active)
+    if is_shop_owner is not None:
+        filters.append(UserModel.is_shop_owner == is_shop_owner)
+
+    final_filter = and_(*filters) if operator == OperatorType.AND else or_(*filters)
+
+    query = select(UserModel).filter(final_filter).offset(skip).limit(limit)
+
+    db_users = db.execute(query).scalars().all()
+
     return db_users
 
 
@@ -85,3 +92,29 @@ def make_user_admin(
     db_user.role = UserRoleType.ADMIN.value
     db.commit()
     return db_user
+
+
+@router.put(
+    "/shops/{shop_id}/verify",
+    dependencies=[Depends(get_current_active_admin)],
+    status_code=status.HTTP_200_OK,
+    summary="Verify a shop",
+)
+def verify_shop(
+    shop_id: uuid.UUID,
+    db: Annotated[Session, Depends(get_db)],
+):
+    db_shop = get_shop(db, shop_id)
+    if db_shop is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shop not found",
+        )
+    if db_shop.status == VendorStatusType.VERIFIED.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Shop is already verified",
+        )
+    db_shop.status = VendorStatusType.VERIFIED.value
+    db.commit()
+    return db_shop

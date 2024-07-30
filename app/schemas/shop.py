@@ -19,3 +19,12 @@ class Shop(BaseModel):
     logo: HttpUrl
     status: str
     vendor: User
+
+
+class StaffMember(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    full_name: str
+    role: str
+    profile_image: Optional[HttpUrl]
+    shop: Shop

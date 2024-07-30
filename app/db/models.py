@@ -211,6 +211,9 @@ class ShopMember(Base):
     __tablename__ = "shop_member"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
+    profile_image: Mapped[Optional[str]] = mapped_column(
+        nullable=True, comment="URL to the image"
+    )
     full_name: Mapped[str] = mapped_column(nullable=False)
     role: Mapped[str] = mapped_column(nullable=False, index=True)
 

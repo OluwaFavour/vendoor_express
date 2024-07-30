@@ -26,7 +26,7 @@ def update_user(db: Session, user: UserModel, **kwargs) -> UserModel:
         values[key] = value
     db.execute(update(UserModel).filter_by(id=user.id).values(**values))
     db.commit()
-    return get_user(db, user.id)
+    return user
 
 
 def create_user(db: Session, user: UserCreate) -> UserModel:
