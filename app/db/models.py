@@ -2,7 +2,7 @@ import datetime, uuid, decimal
 from typing import Optional
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship, validates
-from sqlalchemy import ForeignKey, func, SmallInteger, CheckConstraint
+from sqlalchemy import ForeignKey, func, SmallInteger, CheckConstraint, Column, Table
 
 from .base import Base
 from .enums import (
@@ -15,6 +15,13 @@ from .enums import (
     TokenType,
     WantedHelpType,
     VendorStatusType,
+)
+
+user_followed_shops = Table(
+    "user_followed_shops",
+    Base.metadata,
+    Column("user_id", ForeignKey("user.id", ondelete="CASCADE"), primary_key=True),
+    Column("shop_id", ForeignKey("shop.id", ondelete="CASCADE"), primary_key=True),
 )
 
 
@@ -78,6 +85,9 @@ class User(Base):
     is_first_login: Mapped[Optional[bool]] = mapped_column(nullable=True)
     role: Mapped[str] = mapped_column(
         nullable=False, index=True, insert_default=f"{UserRoleType.USER.value}"
+    )
+    followed_shops: Mapped[Optional[list["Shop"]]] = relationship(
+        back_populates="followers", secondary=user_followed_shops
     )
     shop: Mapped[Optional["Shop"]] = relationship(
         back_populates="vendor", cascade="all, delete-orphan"
@@ -157,7 +167,13 @@ class Shop(Base):
     status: Mapped[str] = mapped_column(
         nullable=False, insert_default=VendorStatusType.PENDING.value, index=True
     )
-
+    location: Mapped[Optional[str]] = mapped_column(nullable=True)
+    followers: Mapped[Optional[list["User"]]] = relationship(
+        back_populates="followed_shops", secondary=user_followed_shops
+    )
+    members: Mapped[Optional[list["ShopMember"]]] = relationship(
+        back_populates="shop", cascade="all, delete-orphan"
+    )
     vendor_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE"), unique=True
     )
@@ -189,6 +205,19 @@ class Shop(Base):
                     return value
             raise ValueError(f"Invalid value for {key}: {value}")
         return value
+
+
+class ShopMember(Base):
+    __tablename__ = "shop_member"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
+    full_name: Mapped[str] = mapped_column(nullable=False)
+    role: Mapped[str] = mapped_column(nullable=False, index=True)
+
+    shop_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("shop.id", ondelete="CASCADE"), unique=True
+    )
+    shop: Mapped["Shop"] = relationship(back_populates="members")
 
 
 class Product(Base):
