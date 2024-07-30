@@ -51,11 +51,12 @@ def create_shop(db: Session, form_data: VendorProfileCreationForm, user: User) -
         business_registration_certificate_image=business_registration_certificate_image_url,
         is_shop_owner=True,
     )
+    logo: UploadFile = form_data.pop("logo")
 
     shop = Shop(**form_data, vendor_id=user.id)
     # Upload Image to cloudinary
-    logo: UploadFile = form_data.pop("logo")
-    upload_image(str(shop.id), logo.file)
+    logo: str = upload_image(str(shop.id), logo.file)
+    shop.logo = logo
     db.add(shop)
     db.commit()
     db.refresh(shop)
