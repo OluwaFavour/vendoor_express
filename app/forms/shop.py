@@ -1,6 +1,6 @@
 from typing import Annotated, Any, Optional
 
-from fastapi import Form, UploadFile, File
+from fastapi import Form, UploadFile, File, HTTPException, status
 from pydantic import EmailStr
 
 from ..db.enums import UserRoleType, ProofOfIdentityType, ShopType, WantedHelpType
@@ -92,10 +92,19 @@ class VendorProfileCreationForm:
             "business_registration_certificate_image": business_registration_certificate_image,
             "logo": logo,
         }
-        for field, image in images.items():
-            VendorProfileCreationValidator.validate_image(image, field)
+        try:
+            for field, image in images.items():
+                VendorProfileCreationValidator.validate_image(image, field)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
         if role.name != "VENDOR":
-            raise ValueError("Only VENDOR role is allowed during shop creation")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Role must be VENDOR",
+            )
         self.proof_of_identity_image = proof_of_identity_image
         self.logo = logo
         self.business_registration_certificate_image = (
@@ -164,9 +173,15 @@ class ShopUpdateForm:
             "logo": logo,
             "cover_photo": cover_photo,
         }
-        for field, image in images.items():
-            if image is not None:
-                VendorProfileCreationValidator.validate_image(image, field)
+        try:
+            for field, image in images.items():
+                if image is not None:
+                    VendorProfileCreationValidator.validate_image(image, field)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
         self.name = name
         self.tag = tag
         self.description = description
@@ -202,7 +217,15 @@ class StaffMemberForm:
             File(title="Profile Image", description="Image of the staff member"),
         ] = None,
     ):
-        VendorProfileCreationValidator.validate_image(profile_image, "profile_image")
+        try:
+            VendorProfileCreationValidator.validate_image(
+                profile_image, "profile_image"
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
         self.full_name = full_name
         self.role = role
         self.profile_image = profile_image
