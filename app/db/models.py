@@ -229,6 +229,20 @@ class ShopMember(Base):
     shop: Mapped["Shop"] = relationship(back_populates="members")
 
 
+ProductSubCategoryAssociation = Table(
+    "product_sub_category_association",
+    Base.metadata,
+    Column(
+        "product_id", ForeignKey("product.id", ondelete="SET NULL"), primary_key=True
+    ),
+    Column(
+        "sub_category_id",
+        ForeignKey("sub_category.id", ondelete="SET NULL"),
+        primary_key=True,
+    ),
+)
+
+
 class SubCategory(Base):
     __tablename__ = "sub_category"
 
@@ -247,6 +261,9 @@ class SubCategory(Base):
         ForeignKey("category.id", ondelete="CASCADE")
     )
     category: Mapped["Category"] = relationship(back_populates="sub_categories")
+    products: Mapped[Optional[list["Product"]]] = relationship(
+        back_populates="sub_categories", secondary=ProductSubCategoryAssociation
+    )
 
 
 class Category(Base):
@@ -289,6 +306,9 @@ class Product(Base):
         ForeignKey("category.id", ondelete="CASCADE")
     )
     category: Mapped["Category"] = relationship(back_populates="products")
+    sub_categories: Mapped[Optional[list["SubCategory"]]] = relationship(
+        back_populates="product", secondary=ProductSubCategoryAssociation
+    )
     media: Mapped[str] = mapped_column(
         nullable=False, comment="URL to the product media folder with images and videos"
     )
