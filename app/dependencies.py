@@ -108,17 +108,23 @@ def get_current_active_vendor(
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This user does not have the necessary permissions to access this resource",
+            detail={
+                "message": "This user does not have the necessary permissions to access this resource",
+                "role": current_user.role,
+            },
         )
 
 
 def get_current_active_verified_vendor(
     current_vendor: Annotated[User, Depends(get_current_active_vendor)]
 ) -> User:
-    if current_vendor.status == VendorStatusType.VERIFIED.value:
+    if current_vendor.shop.status == VendorStatusType.VERIFIED.value:
         return current_vendor
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This user does not have the necessary permissions to access this resource",
+            detail={
+                "message": "This vendor has not been verified, please contact support",
+                "status": current_vendor.shop.status,
+            },
         )
