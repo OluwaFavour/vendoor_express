@@ -57,3 +57,11 @@ class User(UserBase):
 
     id: uuid.UUID
     is_active: bool
+
+
+class Page(BaseModel):
+    page: int
+    page_size: int
+    total_pages: int
+    total_users: int
+    users: list[User]

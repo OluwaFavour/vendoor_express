@@ -39,9 +39,20 @@ class UserRoleType(str, Enum):
     ADMIN = "admin"
 
 
-class OperatorType(str, Enum):
+class FilterOperatorType(str, Enum):
     AND = "and"
     OR = "or"
+    LT = "lt"
+    GT = "gt"
+    LTE = "lte"
+    GTE = "gte"
+    NEQ = "neq"
+    LIKE = "like"
+
+
+class SortDirection(str, Enum):
+    ASC = "asc"
+    DESC = "desc"
 
 
 class TokenType(str, Enum):

@@ -1,8 +1,9 @@
+from datetime import datetime
 import uuid
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 
@@ -10,9 +11,9 @@ from ..dependencies import get_db, get_current_active_admin
 from ..crud.user import get_user
 from ..crud.shop import get_shop
 from ..core.debug import logger
-from ..db.enums import OperatorType, UserRoleType, VendorStatusType
+from ..db.enums import FilterOperatorType, UserRoleType, VendorStatusType, SortDirection
 from ..db.models import User as UserModel
-from ..schemas.user import User
+from ..schemas.user import User, Page
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -38,43 +39,81 @@ def read_user(
 
 @router.get(
     "/users/",
-    response_model=list[User],
+    response_model=Page,
     dependencies=[Depends(get_current_active_admin)],
     status_code=status.HTTP_200_OK,
 )
 def read_users(
     db: Session = Depends(get_db),
-    role: Optional[UserRoleType] = Query(None),
-    is_active: Optional[bool] = Query(None),
-    is_shop_owner: Optional[bool] = Query(None),
-    operator: OperatorType = Query(OperatorType.AND),
-    skip: int = 0,
-    limit: int = 100,
+    roles: list[UserRoleType] = Query(None),
+    is_active: list[bool] = Query(None),
+    is_shop_owner: list[bool] = Query(None),
+    operator: FilterOperatorType = Query(FilterOperatorType.AND),
+    created_at_operator: FilterOperatorType = Query(FilterOperatorType.AND),
+    created_at_value: Optional[datetime] = Query(None),
+    sort_by: list[tuple[str, SortDirection]] = Query(None),
+    search_query: Optional[str] = Query(None),
+    skip: Annotated[int, Query(alias="offset", ge=0)] = 0,
+    limit: Annotated[int, Query(alias="limit", ge=1, le=10)] = 10,
 ) -> list[User]:
-    if operator not in [OperatorType.AND, OperatorType.OR]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid operator"
-        )
     filters = []
-    if role is not None:
-        filters.append(UserModel.role == role)
+
+    if roles:
+        filters.append(UserModel.role.in_(roles))
     if is_active is not None:
-        filters.append(UserModel.is_active == is_active)
+        filters.append(UserModel.is_active.in_(is_active))
     if is_shop_owner is not None:
-        filters.append(UserModel.is_shop_owner == is_shop_owner)
+        filters.append(UserModel.is_shop_owner.in_(is_shop_owner))
 
-    if not filters:
-        final_filter = (
-            and_(True, *filters)
-            if operator == OperatorType.AND
-            else or_(True, *filters)
-        )
+    if created_at_operator == FilterOperatorType.LT:
+        filters.append(UserModel.created_at < created_at_value)
+    elif created_at_operator == FilterOperatorType.GT:
+        filters.append(UserModel.created_at > created_at_value)
+    elif created_at_operator == FilterOperatorType.LTE:
+        filters.append(UserModel.created_at <= created_at_value)
+    elif created_at_operator == FilterOperatorType.GTE:
+        filters.append(UserModel.created_at >= created_at_value)
+    elif created_at_operator == FilterOperatorType.NEQ:
+        filters.append(UserModel.created_at != created_at_value)
+    elif created_at_operator == FilterOperatorType.LIKE:
+        filters.append(UserModel.created_at.like(f"%{created_at_value}%"))
 
-    query = select(UserModel).filter(final_filter).offset(skip).limit(limit)
+    if sort_by:
+        sort_expressions = [
+            (
+                getattr(UserModel, field).asc()
+                if direction == SortDirection.ASC
+                else getattr(UserModel, field).desc()
+            )
+            for field, direction in sort_by
+        ]
+        query = db.query(UserModel).order_by(*sort_expressions)
+    else:
+        query = db.query(UserModel)
 
-    db_users = db.execute(query).scalars().all()
+    if search_query:
+        filters.append(UserModel.full_name.ilike(f"%{search_query}%"))
+        filters.append(UserModel.email.ilike(f"%{search_query}%"))
+        filters.append(UserModel.phone_number.ilike(f"%{search_query}%"))
 
-    return db_users
+    if filters:
+        if operator == FilterOperatorType.AND:
+            query = query.filter(*filters)
+        elif operator == FilterOperatorType.OR:
+            query = query.filter(db.or_(*filters))
+
+    total_count = query.count()
+    total_pages = (total_count + limit - 1) // limit
+    page = skip // limit + 1
+    users = query.offset(skip).limit(limit).all()
+
+    return Page(
+        page=page,
+        page_size=limit,
+        total_pages=total_pages,
+        total_users=total_count,
+        users=users,
+    )
 
 
 @router.put(

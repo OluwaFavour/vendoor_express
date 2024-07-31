@@ -83,6 +83,9 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(nullable=False, insert_default=True)
     is_shop_owner: Mapped[bool] = mapped_column(nullable=False, insert_default=False)
     is_first_login: Mapped[Optional[bool]] = mapped_column(nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        nullable=False, insert_default=func.now()
+    )
     role: Mapped[str] = mapped_column(
         nullable=False, index=True, insert_default=f"{UserRoleType.USER.value}"
     )
@@ -161,6 +164,9 @@ class Shop(Base):
         nullable=True, comment="URL to the image"
     )
     logo: Mapped[str] = mapped_column(nullable=False, comment="URL to the image")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        nullable=False, insert_default=func.now()
+    )
     products: Mapped[Optional[list["Product"]]] = relationship(
         back_populates="shop", cascade="save-update, merge, refresh-expire, expunge"
     )
