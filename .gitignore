@@ -3,6 +3,7 @@
 *.sqlite3
 *.db
 *.log
+*.sql
 *.bat
 README.md
 migrations/versions/*
@@ -13,3 +14,4 @@ text_reader.py
 __pycache__/
 venv/
 .pytest_cache/
+.vscode/
