@@ -38,7 +38,7 @@ def create_shop(db: Session, form_data: VendorProfileCreationForm, user: User) -
         db,
         user,
         phone_number=user_phone_number,
-        role=user_role,
+        role=user_role if user.role != UserRoleType.ADMIN.value else user.role,
         proof_of_identity_type=proof_of_identity_type,
         is_shop_owner=True,
     )
