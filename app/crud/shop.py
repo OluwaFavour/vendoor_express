@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Union
+from typing import Any, Union, Optional
 
 from fastapi import UploadFile
 from sqlalchemy import update
@@ -8,6 +8,7 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from ..core.utils import upload_image
+from ..core.debug import logger
 from ..crud.user import update_user
 from ..db.enums import UserRoleType, ProofOfIdentityType
 from ..db.models import User, Shop, ShopMember
@@ -73,7 +74,8 @@ def update_shop(db: Session, shop: Shop, **kwargs) -> Shop:
     for key, value in kwargs.items():
         if not hasattr(shop, key):
             raise ValueError(f"Shop model does not have attribute {key}")
-        values[key] = value
+        if value is not None:
+            values[key] = value
     if "name" in values:
         if check_shop_name_uniqueness(db, values["name"]) is not None:
             raise IntegrityError(None, None, BaseException("Shop name already exists"))
@@ -92,12 +94,15 @@ def get_shop_staffs(db: Session, shop: Shop) -> list[ShopMember]:
     return shop.members
 
 
-def get_shop_staff(db: Session, shop: Shop, staff_id: uuid.UUID) -> ShopMember:
+def get_shop_staff(
+    db: Session, shop: Shop, staff_id: uuid.UUID
+) -> Optional[ShopMember]:
     staff = db.execute(select(ShopMember).filter_by(id=staff_id)).scalar_one_or_none()
     if staff is None:
         return None
     if staff.shop_id != shop.id:
         raise IntegrityError(None, None, BaseException("Staff does not belong to shop"))
+    return staff
 
 
 def add_staff_to_shop(db: Session, shop: Shop, **kwargs) -> ShopMember:
@@ -108,11 +113,13 @@ def add_staff_to_shop(db: Session, shop: Shop, **kwargs) -> ShopMember:
     for field in kwargs:
         if not hasattr(ShopMember, field):
             raise ValueError(f"ShopMember model does not have attribute {field}")
+    if "profile_image" in kwargs and kwargs["profile_image"] is not None:
+        profile_image: UploadFile = kwargs.pop("profile_image")
     staff = ShopMember(**kwargs)
-    if "profile_image" in kwargs:
-        kwargs["profile_image"] = upload_image(
-            f"{shop.vendor_id}/shop/staff/{staff.id}", kwargs["profile_image"].file
-        )
+    profile_image = upload_image(
+        f"{shop.vendor_id}/shop/staff/{staff.id}", profile_image.file
+    )
+    staff.profile_image = profile_image
     shop.members.append(staff)
     db.commit()
     db.refresh(staff)
@@ -124,8 +131,9 @@ def update_shop_staff(db: Session, staff: ShopMember, **kwargs) -> ShopMember:
     for key, value in kwargs.items():
         if not hasattr(staff, key):
             raise ValueError(f"ShopMember model does not have attribute {key}")
-        values[key] = value
-    if "profile_image" in values:
+        if value is not None:
+            values[key] = value
+    if "profile_image" in values and values["profile_image"] is not None:
         values["profile_image"] = upload_image(
             f"{staff.shop.vendor_id}/shop/staff/{staff.id}",
             values["profile_image"].file,

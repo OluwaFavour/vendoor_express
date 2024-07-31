@@ -224,7 +224,7 @@ class ShopMember(Base):
     role: Mapped[str] = mapped_column(nullable=False, index=True)
 
     shop_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("shop.id", ondelete="CASCADE"), unique=True
+        ForeignKey("shop.id", ondelete="CASCADE")
     )
     shop: Mapped["Shop"] = relationship(back_populates="members")
 

@@ -21,6 +21,14 @@ class Shop(BaseModel):
     vendor: User
 
 
+class ShopPage(BaseModel):
+    page: int
+    page_size: int
+    total_pages: int
+    total_users: int
+    shops: list[Shop]
+
+
 class StaffMember(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID

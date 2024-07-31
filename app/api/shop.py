@@ -1,10 +1,11 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
+from ..core.debug import logger
 from ..db.models import User as UserModel
 from ..schemas.shop import Shop, StaffMember
 from ..crud.shop import (
@@ -13,6 +14,7 @@ from ..crud.shop import (
     add_staff_to_shop,
     update_shop_staff,
     get_shop_staff,
+    get_shop_staffs,
 )
 from ..dependencies import (
     get_current_active_user,
@@ -71,7 +73,7 @@ def update_vendor_profile(
     current_vendor: Annotated[UserModel, Depends(get_current_active_verified_vendor)],
 ):
     try:
-        shop = update_shop(db, current_vendor.shop, form_data.dict())
+        shop = update_shop(db, current_vendor.shop, **form_data.dict())
         return shop
     except ValueError as e:
         raise HTTPException(
@@ -93,7 +95,7 @@ def add_staff(
 ) -> StaffMember:
     try:
         shop = current_vendor.shop
-        staff = add_staff_to_shop(db, shop, form_data.dict())
+        staff = add_staff_to_shop(db, shop, **form_data.dict())
         return staff
     except ValueError as e:
         raise HTTPException(
@@ -111,7 +113,7 @@ def add_staff(
 def update_staff(
     db: Annotated[Session, Depends(get_db)],
     form_data: Annotated[StaffMemberForm, Depends()],
-    staff_id: uuid.UUID,
+    staff_id: Annotated[uuid.UUID, Path(title="Staff ID", description="Staff ID")],
     current_vendor: Annotated[UserModel, Depends(get_current_active_verified_vendor)],
 ):
     try:
@@ -121,7 +123,7 @@ def update_staff(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Staff not found",
             )
-        update_shop_staff(db, staff, form_data.dict())
+        update_shop_staff(db, staff, **form_data.dict())
         return staff
     except IntegrityError as e:
         raise HTTPException(
@@ -135,3 +137,17 @@ def update_staff(
         )
     except HTTPException as e:
         raise e
+
+
+@router.get(
+    "/me/staffs/",
+    response_model=list[StaffMember],
+    status_code=status.HTTP_200_OK,
+    summary="Get all staffs",
+)
+def get_staffs(
+    db: Annotated[Session, Depends(get_db)],
+    current_vendor: Annotated[UserModel, Depends(get_current_active_verified_vendor)],
+):
+    staffs = get_shop_staffs(db, current_vendor.shop)
+    return staffs

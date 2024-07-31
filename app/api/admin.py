@@ -11,9 +11,17 @@ from ..dependencies import get_db, get_current_active_admin
 from ..crud.user import get_user
 from ..crud.shop import get_shop
 from ..core.debug import logger
-from ..db.enums import FilterOperatorType, UserRoleType, VendorStatusType, SortDirection
-from ..db.models import User as UserModel
-from ..schemas.user import User, Page, SortField
+from ..db.enums import (
+    FilterOperatorType,
+    UserRoleType,
+    VendorStatusType,
+    SortDirection,
+    ShopType,
+    WantedHelpType,
+)
+from ..db.models import User as UserModel, Shop as ShopModel
+from ..schemas.user import User, UserPage, SortField
+from ..schemas.shop import Shop, ShopPage
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -39,33 +47,57 @@ def read_user(
 
 @router.get(
     "/users/",
-    response_model=Page,
+    response_model=UserPage,
     dependencies=[Depends(get_current_active_admin)],
     status_code=status.HTTP_200_OK,
 )
 def read_users(
     db: Annotated[Session, Depends(get_db)],
-    roles: Annotated[Optional[list[UserRoleType]], Query()] = None,
-    is_active: Annotated[Optional[list[bool]], Query()] = None,
-    is_shop_owner: Annotated[Optional[list[bool]], Query()] = None,
+    roles: Annotated[
+        Optional[list[UserRoleType]],
+        Query(
+            title="User roles",
+            description="Filter users by roles, e.g. roles=admin&roles=vendor",
+        ),
+    ] = None,
+    is_active: Annotated[
+        Optional[bool],
+        Query(
+            title="Is active",
+            description="Filter users by active status",
+        ),
+    ] = None,
+    is_shop_owner: Annotated[
+        Optional[bool],
+        Query(
+            title="Is shop owner",
+            description="Filter users by shop owner status",
+        ),
+    ] = None,
     operator: Annotated[FilterOperatorType, Query()] = FilterOperatorType.AND,
     created_at_operator: Annotated[
         FilterOperatorType, Query()
     ] = FilterOperatorType.AND,
     created_at_value: Annotated[Optional[datetime], Query()] = None,
-    sort_by: Annotated[Optional[list[SortField]], Body()] = None,
-    search_query: Annotated[Optional[str], Query()] = None,
+    sort_by: Annotated[Optional[SortField], Body()] = None,
+    search_query: Annotated[
+        Optional[str],
+        Query(
+            title="Search query",
+            description="Search users by full name, email, or phone number",
+        ),
+    ] = None,
     skip: Annotated[int, Query(alias="offset", ge=0)] = 0,
     limit: Annotated[int, Query(alias="limit", ge=1, le=10)] = 10,
-) -> Page:
+) -> UserPage:
     filters = []
 
     if roles:
         filters.append(UserModel.role.in_(roles))
     if is_active is not None:
-        filters.append(UserModel.is_active.in_(is_active))
+        filters.append(UserModel.is_active.is_(is_active))
     if is_shop_owner is not None:
-        filters.append(UserModel.is_shop_owner.in_(is_shop_owner))
+        filters.append(UserModel.is_shop_owner.is_(is_shop_owner))
 
     if created_at_operator == FilterOperatorType.LT:
         filters.append(UserModel.created_at < created_at_value)
@@ -81,15 +113,12 @@ def read_users(
         filters.append(UserModel.created_at.like(f"%{created_at_value}%"))
 
     if sort_by:
-        sort_expressions = [
-            (
-                getattr(UserModel, sort.field).asc()
-                if sort.direction == SortDirection.ASC
-                else getattr(UserModel, sort.field).desc()
-            )
-            for sort in sort_by
-        ]
-        query = select(UserModel).order_by(*sort_expressions)
+        sort_expression = (
+            getattr(UserModel, sort_by.field).asc()
+            if sort_by.direction == SortDirection.ASC
+            else getattr(UserModel, sort_by.field).desc()
+        )
+        query = select(UserModel).order_by(*sort_expression)
     else:
         query = select(UserModel)
 
@@ -102,14 +131,14 @@ def read_users(
         if operator == FilterOperatorType.AND:
             query = query.filter(*filters)
         elif operator == FilterOperatorType.OR:
-            query = query.filter(db.or_(*filters))
+            query = query.filter(or_(*filters))
 
-    total_count = len(db.execute(query).scalars())
+    total_count = db.execute(select(func.count(UserModel.id)).filter(*filters)).scalar()
     total_pages = (total_count + limit - 1) // limit
     page = skip // limit + 1
     users = db.execute(query.offset(skip).limit(limit)).scalars().all()
 
-    return Page(
+    return UserPage(
         page=page,
         page_size=limit,
         total_pages=total_pages,
@@ -138,6 +167,87 @@ def make_user_admin(
     db_user.role = UserRoleType.ADMIN.value
     db.commit()
     return db_user
+
+
+@router.get(
+    "/shops/",
+    response_model=ShopPage,
+    dependencies=[Depends(get_current_active_admin)],
+    status_code=status.HTTP_200_OK,
+)
+def read_shops(
+    db: Annotated[Session, Depends(get_db)],
+    types: Annotated[Optional[list[ShopType]], Query()] = None,
+    categories: Annotated[Optional[list[str]], Query()] = None,
+    wanted_helps: Annotated[Optional[list[WantedHelpType]], Query()] = None,
+    statuses: Annotated[Optional[list[VendorStatusType]], Query()] = None,
+    operator: Annotated[FilterOperatorType, Query()] = FilterOperatorType.AND,
+    created_at_operator: Annotated[
+        FilterOperatorType, Query()
+    ] = FilterOperatorType.AND,
+    created_at_value: Annotated[Optional[datetime], Query()] = None,
+    sort_by: Annotated[Optional[SortField], Body()] = None,
+    search_query: Annotated[Optional[str], Query()] = None,
+    skip: Annotated[int, Query(alias="offset", ge=0)] = 0,
+    limit: Annotated[int, Query(alias="limit", ge=1, le=10)] = 10,
+) -> ShopPage:
+    filters = []
+
+    if types:
+        filters.append(ShopModel.type.in_(types))
+    if categories:
+        filters.append(ShopModel.category.in_(categories))
+    if wanted_helps:
+        filters.append(ShopModel.wanted_help.in_(wanted_helps))
+    if statuses:
+        filters.append(ShopModel.status.in_(statuses))
+
+    if created_at_operator == FilterOperatorType.LT:
+        filters.append(ShopModel.created_at < created_at_value)
+    elif created_at_operator == FilterOperatorType.GT:
+        filters.append(ShopModel.created_at > created_at_value)
+    elif created_at_operator == FilterOperatorType.LTE:
+        filters.append(ShopModel.created_at <= created_at_value)
+    elif created_at_operator == FilterOperatorType.GTE:
+        filters.append(ShopModel.created_at >= created_at_value)
+    elif created_at_operator == FilterOperatorType.NEQ:
+        filters.append(ShopModel.created_at != created_at_value)
+    elif created_at_operator == FilterOperatorType.LIKE:
+        filters.append(ShopModel.created_at.like(f"%{created_at_value}%"))
+
+    if sort_by:
+        sort_expression = (
+            getattr(ShopModel, sort_by.field).asc()
+            if sort_by.direction == SortDirection.ASC
+            else getattr(ShopModel, sort_by.field).desc()
+        )
+        query = select(ShopModel).order_by(*sort_expression)
+    else:
+        query = select(ShopModel)
+
+    if search_query:
+        filters.append(ShopModel.full_name.ilike(f"%{search_query}%"))
+        filters.append(ShopModel.email.ilike(f"%{search_query}%"))
+        filters.append(ShopModel.phone_number.ilike(f"%{search_query}%"))
+
+    if filters:
+        if operator == FilterOperatorType.AND:
+            query = query.filter(*filters)
+        elif operator == FilterOperatorType.OR:
+            query = query.filter(or_(*filters))
+
+    total_count = db.execute(select(func.count(ShopModel.id)).filter(*filters)).scalar()
+    total_pages = (total_count + limit - 1) // limit
+    page = skip // limit + 1
+    shops = db.execute(query.offset(skip).limit(limit)).scalars().all()
+
+    return ShopPage(
+        page=page,
+        page_size=limit,
+        total_pages=total_pages,
+        total_users=total_count,
+        shops=shops,
+    )
 
 
 @router.put(

@@ -59,7 +59,7 @@ class User(UserBase):
     is_active: bool
 
 
-class Page(BaseModel):
+class UserPage(BaseModel):
     page: int
     page_size: int
     total_pages: int
