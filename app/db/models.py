@@ -229,6 +229,48 @@ class ShopMember(Base):
     shop: Mapped["Shop"] = relationship(back_populates="members")
 
 
+class SubCategory(Base):
+    __tablename__ = "sub_category"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(nullable=False)
+    description: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        nullable=False, insert_default=func.now(), index=True
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        nullable=False,
+        insert_default=func.now(),
+        onupdate=func.now(),
+    )
+    category_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("category.id", ondelete="CASCADE")
+    )
+    category: Mapped["Category"] = relationship(back_populates="sub_categories")
+
+
+class Category(Base):
+    __tablename__ = "category"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(nullable=False)
+    description: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        nullable=False, insert_default=func.now(), index=True
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        nullable=False,
+        insert_default=func.now(),
+        onupdate=func.now(),
+    )
+    sub_categories: Mapped[Optional[list["SubCategory"]]] = relationship(
+        back_populates="category", cascade="all, delete-orphan"
+    )
+    products: Mapped[Optional[list["Product"]]] = relationship(
+        back_populates="category", cascade="all, delete-orphan"
+    )
+
+
 class Product(Base):
     __tablename__ = "product"
 
@@ -243,8 +285,10 @@ class Product(Base):
     price: Mapped[decimal.Decimal] = mapped_column(
         CheckConstraint("price > 0", name="price_positive"), nullable=False, index=True
     )
-    category: Mapped[str] = mapped_column(nullable=False, index=True)
-    sub_category: Mapped[Optional[str]] = mapped_column(nullable=True, index=True)
+    category_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("category.id", ondelete="CASCADE")
+    )
+    category: Mapped["Category"] = relationship(back_populates="products")
     media: Mapped[str] = mapped_column(
         nullable=False, comment="URL to the product media folder with images and videos"
     )
