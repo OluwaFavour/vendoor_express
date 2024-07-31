@@ -188,7 +188,7 @@ def forgot_password(
             token_type=TokenType.RESET.value,
             expires_delta=reset_token_expires,
         )
-        reset_link = f"{settings.frontend_password_reset_url}?token={reset_token}"
+        reset_link = f"{settings.frontend_url}/reset-password?token={reset_token}"
         plain_text = f"Click the link to reset your password: {reset_link}"
         html_text = get_html_from_template(
             template="password_reset.html",
