@@ -248,7 +248,6 @@ class SubCategory(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
     name: Mapped[str] = mapped_column(nullable=False)
-    description: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
     )
@@ -271,7 +270,6 @@ class Category(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
     name: Mapped[str] = mapped_column(nullable=False)
-    description: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
     )
