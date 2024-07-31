@@ -74,6 +74,9 @@ def update_shop(db: Session, shop: Shop, **kwargs) -> Shop:
         if not hasattr(shop, key):
             raise ValueError(f"Shop model does not have attribute {key}")
         values[key] = value
+    if "name" in values:
+        if check_shop_name_uniqueness(db, values["name"]) is not None:
+            raise IntegrityError(None, None, BaseException("Shop name already exists"))
     if "logo" in values:
         values["logo"] = upload_image(str(shop.id), values["logo"].file)
     if "cover_photo" in values:

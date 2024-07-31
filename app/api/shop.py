@@ -78,6 +78,11 @@ def update_vendor_profile(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+    except IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e.orig),
+        )
 
 
 @router.post("/me/staffs/", status_code=status.HTTP_201_CREATED, summary="Add a staff")
