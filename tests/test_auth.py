@@ -28,7 +28,6 @@ def get_test_smtp():
         smtp.quit()
 
 
-@pytest.mark.usefixtures("db_session")
 def test_login(test_client, db_session):
     user, password = create_test_user(db_session)
     logger.debug(f"User: {user}")
@@ -52,8 +51,7 @@ def test_login_invalid_credentials(test_client):
     }
 
 
-@pytest.mark.usefixtures("db_session")
-def test_logout(test_client, db_session, mocker):
+def test_logout(test_client, db_session):
     user, password = create_test_user(db_session)
 
     response = test_client.post(
@@ -65,7 +63,6 @@ def test_logout(test_client, db_session, mocker):
     assert response.json() == {"message": "Successfully logged out"}
 
 
-@pytest.mark.usefixtures("db_session")
 def test_logout_all(test_client, db_session):
     user, password = create_test_user(db_session)
     response = test_client.post(
@@ -79,7 +76,6 @@ def test_logout_all(test_client, db_session):
     }
 
 
-@pytest.mark.usefixtures("db_session")
 def test_forget_password(test_client, db_session, monkeypatch):
     mock_smtp = Mock(spec=smtplib.SMTP)
     monkeypatch.setattr(smtplib, "SMTP", mock_smtp)
@@ -93,7 +89,6 @@ def test_forget_password(test_client, db_session, monkeypatch):
     app.dependency_overrides.pop(get_smtp)
 
 
-@pytest.mark.usefixtures("db_session")
 def test_reset_password(test_client, db_session):
     user, _ = create_test_user(db_session)
     reset_token = create_token(
