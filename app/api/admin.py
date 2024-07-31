@@ -2,7 +2,7 @@ from datetime import datetime
 import uuid
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
@@ -13,7 +13,7 @@ from ..crud.shop import get_shop
 from ..core.debug import logger
 from ..db.enums import FilterOperatorType, UserRoleType, VendorStatusType, SortDirection
 from ..db.models import User as UserModel
-from ..schemas.user import User, Page
+from ..schemas.user import User, Page, SortField
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -44,18 +44,20 @@ def read_user(
     status_code=status.HTTP_200_OK,
 )
 def read_users(
-    db: Session = Depends(get_db),
-    roles: list[UserRoleType] = Query(None),
-    is_active: list[bool] = Query(None),
-    is_shop_owner: list[bool] = Query(None),
-    operator: FilterOperatorType = Query(FilterOperatorType.AND),
-    created_at_operator: FilterOperatorType = Query(FilterOperatorType.AND),
-    created_at_value: Optional[datetime] = Query(None),
-    sort_by: list[tuple[str, SortDirection]] = Query(None),
-    search_query: Optional[str] = Query(None),
+    db: Annotated[Session, Depends(get_db)],
+    roles: Annotated[Optional[list[UserRoleType]], Query()] = None,
+    is_active: Annotated[Optional[list[bool]], Query()] = None,
+    is_shop_owner: Annotated[Optional[list[bool]], Query()] = None,
+    operator: Annotated[FilterOperatorType, Query()] = FilterOperatorType.AND,
+    created_at_operator: Annotated[
+        FilterOperatorType, Query()
+    ] = FilterOperatorType.AND,
+    created_at_value: Annotated[Optional[datetime], Query()] = None,
+    sort_by: Annotated[Optional[list[SortField]], Body()] = None,
+    search_query: Annotated[Optional[str], Query()] = None,
     skip: Annotated[int, Query(alias="offset", ge=0)] = 0,
     limit: Annotated[int, Query(alias="limit", ge=1, le=10)] = 10,
-) -> list[User]:
+) -> Page:
     filters = []
 
     if roles:
@@ -81,15 +83,15 @@ def read_users(
     if sort_by:
         sort_expressions = [
             (
-                getattr(UserModel, field).asc()
-                if direction == SortDirection.ASC
-                else getattr(UserModel, field).desc()
+                getattr(UserModel, sort.field).asc()
+                if sort.direction == SortDirection.ASC
+                else getattr(UserModel, sort.field).desc()
             )
-            for field, direction in sort_by
+            for sort in sort_by
         ]
-        query = db.query(UserModel).order_by(*sort_expressions)
+        query = select(UserModel).order_by(*sort_expressions)
     else:
-        query = db.query(UserModel)
+        query = select(UserModel)
 
     if search_query:
         filters.append(UserModel.full_name.ilike(f"%{search_query}%"))
@@ -102,10 +104,10 @@ def read_users(
         elif operator == FilterOperatorType.OR:
             query = query.filter(db.or_(*filters))
 
-    total_count = query.count()
+    total_count = len(db.execute(query).scalars())
     total_pages = (total_count + limit - 1) // limit
     page = skip // limit + 1
-    users = query.offset(skip).limit(limit).all()
+    users = db.execute(query.offset(skip).limit(limit)).scalars().all()
 
     return Page(
         page=page,

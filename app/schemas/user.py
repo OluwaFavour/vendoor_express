@@ -3,7 +3,7 @@ import uuid
 
 from pydantic import BaseModel, EmailStr, ConfigDict, field_validator, Field
 
-from ..db.enums import UserRoleType
+from ..db.enums import UserRoleType, SortDirection
 
 
 class UserBase(BaseModel):
@@ -65,3 +65,8 @@ class Page(BaseModel):
     total_pages: int
     total_users: int
     users: list[User]
+
+
+class SortField(BaseModel):
+    field: str
+    direction: SortDirection
