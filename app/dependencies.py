@@ -103,7 +103,10 @@ def get_current_active_admin(
 def get_current_active_vendor(
     current_user: Annotated[User, Depends(get_current_active_user)]
 ) -> User:
-    if current_user.role == UserRoleType.VENDOR.value:
+    if (
+        current_user.role == UserRoleType.VENDOR.value
+        or current_user.role == UserRoleType.ADMIN.value
+    ):
         return current_user
     else:
         raise HTTPException(
@@ -118,7 +121,10 @@ def get_current_active_vendor(
 def get_current_active_verified_vendor(
     current_vendor: Annotated[User, Depends(get_current_active_vendor)]
 ) -> User:
-    if current_vendor.shop.status == VendorStatusType.VERIFIED.value:
+    if (
+        current_vendor.shop.status == VendorStatusType.VERIFIED.value
+        or current_vendor.role == UserRoleType.ADMIN.value
+    ):
         return current_vendor
     else:
         raise HTTPException(
