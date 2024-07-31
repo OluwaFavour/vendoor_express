@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     session_expire_days: int = 14
     same_site: str = "lax"
     https_only: bool = False
+    debug: bool = True  # Change to False in production
 
     model_config = SettingsConfigDict(env_file=".env")
 
