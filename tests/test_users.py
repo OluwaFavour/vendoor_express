@@ -11,7 +11,7 @@ def test_send_verification_email_success(test_client):
         "password": "Password@123",
         "role": "user",
     }
-    response = test_client.get("/api/users/", json=user_data)
+    response = test_client.post("/api/users/", json=user_data)
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == user_data["email"]

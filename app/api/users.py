@@ -23,7 +23,7 @@ from ..core.utils import send_verification_email as send_verification_email_util
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
-@router.get(
+@router.post(
     "/",
     status_code=status.HTTP_200_OK,
     summary="Generate user token and send email verification link",
