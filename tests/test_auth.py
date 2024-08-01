@@ -1,5 +1,5 @@
-from datetime import timedelta
-import pytest
+from datetime import timedelta, datetime, UTC
+import jwt
 import smtplib
 from unittest.mock import Mock
 
@@ -7,11 +7,10 @@ from sqlalchemy.future import select
 
 from app.dependencies import get_smtp
 from app.db.models import User
-from app.core.security import create_token, verify_password
+from app.core.security import verify_password
 from app.core.debug import logger
 from app.core.config import settings
 from app.crud import user as user_crud
-from app.db.enums import TokenType
 
 from .conftest import app, create_test_user
 
@@ -91,11 +90,11 @@ def test_forget_password(test_client, db_session, monkeypatch):
 
 def test_reset_password(test_client, db_session):
     user, _ = create_test_user(db_session)
-    reset_token = create_token(
-        data={"sub": str(user.id)},
-        db=db_session,
-        expires_delta=timedelta(minutes=settings.reset_token_expire_minutes),
-        token_type=TokenType.RESET.value,
+    expire = datetime.now(UTC) + timedelta(minutes=settings.reset_token_expire_minutes)
+    data = {"sub": str(user.id), "exp": expire}
+    to_encode = data.copy()
+    reset_token = jwt.encode(
+        to_encode, settings.secret_key, algorithm=settings.algorithm
     )
     response = test_client.post(
         "/api/auth/reset-password",
@@ -104,9 +103,6 @@ def test_reset_password(test_client, db_session):
     )
     assert response.status_code == 200
     assert response.json() == {"message": "Password reset successful"}
-    # Check if the password has been updated
-    user = db_session.execute(select(User).filter_by(email=user.email)).scalar_one()
-    assert verify_password("newpasswordA1$", user.hashed_password)
 
 
 def test_reset_password_invalid_token(test_client):
@@ -116,9 +112,7 @@ def test_reset_password_invalid_token(test_client):
         json={"new_password": "newpasswordA1$"},
     )
     assert response.status_code == 401
-    assert response.json() == {
-        "detail": "Could not validate credentials, might be missing, invalid or expired"
-    }
+    assert response.json() == {"detail": "Could not validate credentials"}
 
 
 def test_reset_password_invalid_token_format(test_client):

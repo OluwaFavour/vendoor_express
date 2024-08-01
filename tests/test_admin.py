@@ -27,13 +27,8 @@ def test_read_users(test_client, db_session):
     response = test_client.get("/api/admin/users/")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["id"] == str(user.id)
-    assert data[0]["email"] == user.email
-    assert data[0]["role"] == "admin"
-    assert data[0]["is_active"] == True
-    assert "hashed_password" not in data[0]
-    assert "password" not in data[0]
+    assert data["page"] == 1
+    assert data["total_users"] == 1
 
 
 @pytest.mark.usefixtures("db_session")

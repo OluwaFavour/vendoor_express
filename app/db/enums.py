@@ -55,12 +55,6 @@ class SortDirection(str, Enum):
     DESC = "desc"
 
 
-class TokenType(str, Enum):
-    ACCESS = "access"
-    REFRESH = "refresh"
-    RESET = "reset"
-
-
 class WantedHelpType(str, Enum):
     ADS_AND_AWARENESS = "ads_and_awareness"
     GAINING_NEW_CUSTOMERS = "gaining_new_customers"

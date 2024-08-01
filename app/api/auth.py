@@ -7,17 +7,16 @@ import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from fastapi.responses import JSONResponse
+from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db, get_current_active_user, get_smtp
 from ..crud.user import get_user_by_email, get_user, update_user
-from ..crud.token import (
-    delete_user_tokens,
+from ..crud.session import (
     delete_session,
 )
 from ..db.models import User as UserModel
-from ..db.enums import TokenType
-from ..schemas.auth import TokenPayload, ResetPasswordRequest
+from ..schemas.auth import ResetPasswordRequest, EmailPayload
 from ..core.config import settings
 from ..core.utils import (
     authenticate,
@@ -27,9 +26,7 @@ from ..core.utils import (
     delete_session_by_user_id,
 )
 from ..core.security import (
-    create_token,
     hash_password,
-    verify_token,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -174,19 +171,20 @@ def logout_all(
     summary="Generate password reset link",
 )
 def forgot_password(
-    email: TokenPayload,
+    email: EmailPayload,
     db: Annotated[Session, Depends(get_db)],
     smtp: Annotated[SMTP, Depends(get_smtp)],
 ):
     email = email.email
     user = get_user_by_email(db=db, email=email)
     if user:
-        reset_token_expires = timedelta(minutes=settings.reset_token_expire_minutes)
-        reset_token = create_token(
-            data={"sub": str(user.id)},
-            db=db,
-            token_type=TokenType.RESET.value,
-            expires_delta=reset_token_expires,
+        expire = datetime.datetime.now(datetime.UTC) + datetime.timedelta(
+            minutes=settings.reset_token_expire_minutes
+        )
+        data = {"sub": str(user.id), "exp": expire}
+        to_encode = data.copy()
+        reset_token = jwt.encode(
+            to_encode, settings.secret_key, algorithm=settings.algorithm
         )
         reset_link = f"{settings.frontend_url}/reset-password?token={reset_token}"
         plain_text = f"Click the link to reset your password: {reset_link}"
@@ -198,7 +196,7 @@ def forgot_password(
         )
         send_email(
             smtp=smtp,
-            subject="Vendoor Express: Password Reset Request",
+            subject="Vendoor Express - Password Reset Request",
             recipient=email,
             plain_text=plain_text,
             html_text=html_text,
@@ -216,24 +214,31 @@ def reset_password(
     authorization: Annotated[str, Header(pattern="Bearer .*")],
     db: Annotated[Session, Depends(get_db)],
 ):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials, might be missing, invalid or expired",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
         token = authorization.split(" ")[1]
-        user_id, _ = verify_token(
-            token=token, credentials_exception=credentials_exception
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.algorithm]
         )
+        user_id = uuid.UUID(payload.get("sub"))
         user = get_user(db, user_id)
         if not user:
-            raise credentials_exception
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         hashed_password = hash_password(new_password.new_password)
         user = update_user(db, user, hashed_password=hashed_password)
-
-        # Delete all tokens for the user
-        delete_user_tokens(db, user)
         return {"message": "Password reset successful"}
-    except jwt.PyJWTError:
-        raise credentials_exception
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials, token expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

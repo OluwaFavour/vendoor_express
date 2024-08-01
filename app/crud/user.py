@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import update
 from sqlalchemy.future import select

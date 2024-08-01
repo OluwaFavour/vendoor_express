@@ -1,0 +1,84 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .email-container {
+            background-color: #FFFFFF;
+            padding: 40px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .email-header img {
+            width: 100px;
+        }
+
+        .email-header h1 {
+            font-size: 24px;
+            color: #333;
+            margin: 20px 0;
+        }
+
+        .email-body p {
+            font-size: 16px;
+            color: #666;
+            margin: 10px 0;
+        }
+
+        .email-body .highlight {
+            color: #C52E05;
+            font-weight: bold;
+        }
+
+        .verify-button {
+            background-color: #C52E05;
+            color: #FFFFFF;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: inline-block;
+        }
+
+        .verify-button:hover {
+            background-color: #a12504;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <img src="https://res.cloudinary.com/vendoor-express/image/upload/v1721990374/assets/logo_1_a22hwu.png" alt="Logo">
+            <h1>Verify Email</h1>
+        </div>
+        <div class="email-body">
+            <p>Hi {{ user_name }},</p>
+            <p>Thank you for signing up with Vendoor Express. Please click the button below to verify your email address:</p>
+            <a href="{{ verification_link }}" class="verify-button">Verify</a>
+            <p>If you did not sign up for an account, please ignore this email or reply to let us know.</p>
+            <p>This verification link is only valid for the next {{ verification_link_expiry }} minutes.</p>
+            <p>Thanks,</p>
+            <p>The Vendoor Express Team</p>
+        </div>
+    </div>
+</body>
+
+</html>

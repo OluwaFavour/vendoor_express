@@ -1,6 +1,7 @@
 import uuid
 import datetime
 from jinja2 import FileSystemLoader, Environment
+import jwt
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from smtplib import (
@@ -14,15 +15,16 @@ from typing import Optional, Union, Any, Annotated
 
 from cloudinary.uploader import upload
 from cloudinary.api import delete_resources_by_prefix, delete_folder
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status, Depends, Request
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .security import verify_password
+from .security import verify_password, hash_password
+from ..crud import session as session_crud, user as user_crud
 from ..db.models import User
-from ..crud import user as user_crud, token as token_crud
-from ..forms.auth import LoginForm
 from ..dependencies import get_db
+from ..forms.auth import LoginForm
+from ..schemas.user import UserCreate
 
 
 def authenticate(
@@ -55,7 +57,7 @@ def create_session(
     ip_address: str,
     expires_at: datetime.datetime,
 ) -> str:
-    session = token_crud.store_session(
+    session = session_crud.store_session(
         db=db,
         session_id=uuid.UUID(id),
         data=data,
@@ -69,7 +71,7 @@ def create_session(
 def delete_session_by_user_id(
     db: Annotated[Session, Depends(get_db)], user_id: str
 ) -> None:
-    token_crud.delete_session_by_user_id(db, user_id)
+    session_crud.delete_session_by_user_id(db, user_id)
 
 
 def create_email_message(
@@ -141,6 +143,38 @@ def get_html_from_template(template: str, **kwargs) -> str:
     env = Environment(loader=FileSystemLoader("app/templates"))
     template = env.get_template(template)
     return template.render(**kwargs)
+
+
+def send_verification_email(user_scheme: UserCreate, smtp: SMTP, request: Request):
+    salt = hash_password(user_scheme.password)
+    expire = datetime.datetime.now(datetime.UTC) + datetime.timedelta(
+        minutes=settings.reset_token_expire_minutes
+    )
+    data = {
+        "sub": f"{user_scheme.email}:{salt}:user:{user_scheme.full_name}",
+        "exp": expire,
+    }
+    to_encode = data.copy()
+    token = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+    # Send email
+    verification_link = f"{request.base_url}api/users/verify-email?token={token}"
+    plain_text = f"Click the link to verify your email: {verification_link}"
+    html_text = get_html_from_template(
+        "email_verification.html",
+        user_name=user_scheme.full_name,
+        verification_link=verification_link,
+        verification_link_expiry=settings.reset_token_expire_minutes,
+    )
+    send_email(
+        smtp=smtp,
+        subject="Vendoor Express - Email Verification",
+        recipient=user_scheme.email,
+        plain_text=plain_text,
+        html_text=html_text,
+        sender=settings.from_email,
+    )
+    return {"message": "Email verification link sent"}
 
 
 def upload_image(asset_id: str, image: Any) -> str:

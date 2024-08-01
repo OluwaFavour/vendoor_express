@@ -1,16 +1,6 @@
 from pydantic import BaseModel, EmailStr, field_validator
 
 
-class Token(BaseModel):
-    access_token: str
-    access_token_expires_in_minutes: int
-    token_type: str
-
-
-class TokenPayload(BaseModel):
-    email: EmailStr
-
-
 class ResetPasswordRequest(BaseModel):
     new_password: str
 
@@ -27,3 +17,7 @@ class ResetPasswordRequest(BaseModel):
         if " " in value:
             raise ValueError("Password must not contain spaces")
         return value
+
+
+class EmailPayload(BaseModel):
+    email: EmailStr

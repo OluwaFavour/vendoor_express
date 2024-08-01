@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from .core.config import settings
 from .core.debug import logger
-from .crud import user as user_crud, token as token_crud
+from .crud import session as session_crud, user as user_crud
 from .db.enums import UserRoleType, VendorStatusType
 from .db.models import User
 from .db.session import SessionLocal
@@ -57,18 +57,18 @@ def get_current_user(db: Annotated[Session, Depends(get_db)], request: Request) 
     session_id = request.cookies.get("session_id")
     if session_id is None:
         raise credentials_exception
-    session = token_crud.get_session(db, uuid.UUID(session_id))
+    session = session_crud.get_session(db, uuid.UUID(session_id))
     if session is None:
         raise credentials_exception
     if session.expires_at.replace(tzinfo=datetime.UTC) < datetime.datetime.now(
         datetime.UTC
     ):
-        token_crud.delete_session(db, session.id)
+        session_crud.delete_session(db, session.id)
         raise credentials_exception
     user_id = uuid.UUID(session.user_id)
     user = user_crud.get_user(db, user_id)
     if user is None:
-        token_crud.delete_session(db, session.id)
+        session_crud.delete_session(db, session.id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found. The user associated with this session has probably been deleted.",

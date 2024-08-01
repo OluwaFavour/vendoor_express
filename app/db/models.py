@@ -12,7 +12,6 @@ from .enums import (
     PaymentMethodType,
     OrderStatusType,
     NotificationType,
-    TokenType,
     WantedHelpType,
     VendorStatusType,
 )
@@ -35,33 +34,6 @@ class SessionData(Base):
     logged_in_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
     )
-
-
-class Token(Base):
-    __tablename__ = "token"
-
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
-    jti: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
-    is_active: Mapped[bool] = mapped_column(nullable=False, insert_default=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("user.id", ondelete="CASCADE")
-    )
-    token_type: Mapped[str] = mapped_column(nullable=False, index=True)
-    expires_at: Mapped[datetime.datetime] = mapped_column(nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        nullable=False, insert_default=func.now()
-    )
-    user: Mapped["User"] = relationship(back_populates="tokens")
-
-    @validates("token_type")
-    def validate_token_type(self, key, value):
-        if value:
-            for enum in TokenType:
-                if value == enum.value:
-                    return value
-            raise ValueError(f"Invalid value for {key}: {value}")
-        return value
-
 
 class User(Base):
     __tablename__ = "user"
@@ -117,9 +89,6 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     default_payment_method: Mapped[Optional["DefaultPaymentMethod"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
-    )
-    tokens: Mapped[Optional[list["Token"]]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     cards: Mapped[Optional[list["Card"]]] = relationship(
@@ -305,7 +274,7 @@ class Product(Base):
     )
     category: Mapped["Category"] = relationship(back_populates="products")
     sub_categories: Mapped[Optional[list["SubCategory"]]] = relationship(
-        back_populates="product", secondary=ProductSubCategoryAssociation
+        back_populates="products", secondary=ProductSubCategoryAssociation
     )
     media: Mapped[str] = mapped_column(
         nullable=False, comment="URL to the product media folder with images and videos"

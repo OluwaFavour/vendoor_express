@@ -4,14 +4,14 @@ from .conftest import create_test_user
 from app.core.debug import logger
 
 
-def test_create_user_success(test_client):
+def test_send_verification_email_success(test_client):
     user_data = {
         "full_name": "Test User",
         "email": "test@example.com",
         "password": "Password@123",
         "role": "user",
     }
-    response = test_client.post("/api/users/", json=user_data)
+    response = test_client.get("/api/users/", json=user_data)
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == user_data["email"]
@@ -19,7 +19,7 @@ def test_create_user_success(test_client):
     assert "id" in data
 
 
-def test_create_user_email_already_in_use(test_client):
+def test_send_verification_email_email_already_in_use(test_client):
     user_data = {
         "full_name": "Test User",
         "email": "test@example.com",
