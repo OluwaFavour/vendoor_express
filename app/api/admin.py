@@ -77,7 +77,7 @@ def read_users(
     operator: Annotated[FilterOperatorType, Query()] = FilterOperatorType.AND,
     created_at_operator: Annotated[
         FilterOperatorType, Query()
-    ] = FilterOperatorType.AND,
+    ] = FilterOperatorType.LTE,
     created_at_value: Annotated[Optional[datetime], Query()] = None,
     sort_by: Annotated[Optional[SortField], Body()] = None,
     search_query: Annotated[
@@ -184,7 +184,7 @@ def read_shops(
     operator: Annotated[FilterOperatorType, Query()] = FilterOperatorType.AND,
     created_at_operator: Annotated[
         FilterOperatorType, Query()
-    ] = FilterOperatorType.AND,
+    ] = FilterOperatorType.LTE,
     created_at_value: Annotated[Optional[datetime], Query()] = None,
     sort_by: Annotated[Optional[SortField], Body()] = None,
     search_query: Annotated[Optional[str], Query()] = None,
@@ -226,7 +226,7 @@ def read_shops(
         query = select(ShopModel)
 
     if search_query:
-        filters.append(ShopModel.full_name.ilike(f"%{search_query}%"))
+        filters.append(ShopModel.name.ilike(f"%{search_query}%"))
         filters.append(ShopModel.email.ilike(f"%{search_query}%"))
         filters.append(ShopModel.phone_number.ilike(f"%{search_query}%"))
 
