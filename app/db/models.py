@@ -35,6 +35,7 @@ class SessionData(Base):
         nullable=False, insert_default=func.now(), index=True
     )
 
+
 class User(Base):
     __tablename__ = "user"
 
@@ -216,7 +217,7 @@ class SubCategory(Base):
     __tablename__ = "sub_category"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(nullable=False)
+    name: Mapped[str] = mapped_column(nullable=False, unique=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
     )
@@ -238,7 +239,7 @@ class Category(Base):
     __tablename__ = "category"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(nullable=False)
+    name: Mapped[str] = mapped_column(nullable=False, unique=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
     )
@@ -316,7 +317,7 @@ class ProductOption(Base):
     __tablename__ = "product_option"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(nullable=False, index=True)
+    name: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
     value: Mapped[str] = mapped_column(nullable=False, index=True)
 
     product_id: Mapped[uuid.UUID] = mapped_column(
