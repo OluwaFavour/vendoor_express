@@ -12,19 +12,7 @@ from app.core.debug import logger
 from app.core.config import settings
 from app.crud import user as user_crud
 
-from .conftest import app, create_test_user
-
-
-# SMTP connection for testing
-def get_test_smtp():
-    """Manage the SMTP connection by creating a new connection for each request"""
-    smtp = smtplib.SMTP(settings.smtp_host, settings.smtp_port)
-    try:
-        smtp.starttls()
-        smtp.login(settings.smtp_login, settings.smtp_password)
-        yield smtp
-    finally:
-        smtp.quit()
+from .conftest import app, create_test_user, get_test_smtp
 
 
 def test_login(test_client, db_session):

@@ -1,4 +1,5 @@
 import pytest
+import smtplib
 from typing import Optional
 
 from fastapi.testclient import TestClient
@@ -7,7 +8,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 
 from app.db.models import User
-
+from app.core.config import settings
 from app.dependencies import get_db
 from app.db.models import Base
 from app.main import app
@@ -78,3 +79,15 @@ def create_test_user(
     db.commit()
     db.refresh(user)
     return user, password
+
+
+# SMTP connection for testing
+def get_test_smtp():
+    """Manage the SMTP connection by creating a new connection for each request"""
+    smtp = smtplib.SMTP(settings.smtp_host, settings.smtp_port)
+    try:
+        smtp.starttls()
+        smtp.login(settings.smtp_login, settings.smtp_password)
+        yield smtp
+    finally:
+        smtp.quit()
