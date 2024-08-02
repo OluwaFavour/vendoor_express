@@ -11,7 +11,7 @@ from ..core.utils import upload_image
 from ..core.debug import logger
 from ..crud.user import update_user
 from ..db.enums import UserRoleType, ProofOfIdentityType
-from ..db.models import User, Shop, ShopMember
+from ..db.models import User, Shop, ShopMember, Product
 from ..forms.shop import VendorProfileCreationForm
 
 
@@ -88,6 +88,30 @@ def update_shop(db: Session, shop: Shop, **kwargs) -> Shop:
     db.execute(update(Shop).filter_by(id=shop.id).values(**values))
     db.commit()
     return shop
+
+
+def add_product_to_shop(db: Session, shop: Shop, product: Product) -> Product:
+    """Add a product to a shop."""
+    shop.products.append(product)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+def get_product_in_shop(
+    db: Session, shop: Shop, product_id: uuid.UUID
+) -> Optional[Product]:
+    """Get a product by ID within a specific shop."""
+    return db.execute(
+        select(Product).filter(Product.shop_id == shop.id, Product.id == product_id)
+    ).scalar_one_or_none()
+
+
+def list_products_in_shop(db: Session, shop: Shop) -> list[Product]:
+    """List all products within a specific shop."""
+    return (
+        db.execute(select(Product).filter(Product.shop_id == shop.id)).scalars().all()
+    )
 
 
 def get_shop_staffs(db: Session, shop: Shop) -> list[ShopMember]:
