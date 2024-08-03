@@ -24,8 +24,8 @@ class AddressForm:
         city: Annotated[str, Form(example="Iyana-Paja", max_length=50, min_length=3)],
         state: Annotated[str, Form(example="Lagos", max_length=50, min_length=3)],
         country: Annotated[str, Form(example="Nigeria", max_length=50, min_length=3)],
-        postal_code: Optional[
-            Annotated[str, Form(example="100001", max_length=10, min_length=5)]
+        postal_code: Annotated[
+            Optional[str], Form(example="100001", max_length=10, min_length=5)
         ] = None,
         set_as_default: Annotated[bool, Form()] = False,
     ):
