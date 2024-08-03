@@ -41,15 +41,36 @@ def update_cart_item_quantity(
 
 
 def get_cart_items(db: Session, user: User) -> list[CartItem]:
-    return db.query(CartItem).filter(CartItem.user_id == user.id).all()
+    return (
+        db.execute(
+            select(CartItem).filter(
+                CartItem.user_id == user.id,
+            )
+        )
+        .scalars()
+        .all()
+    )
 
 
-def get_cart_summary(db: Session, user: User) -> Decimal:
-    cart_items = get_cart_items(db, user)
-    total = Decimal(0)
+def get_cart_item_by_product_id(
+    db: Session, user: User, product_id: UUID
+) -> Optional[CartItem]:
+    return db.execute(
+        select(CartItem).filter(
+            CartItem.user_id == user.id,
+            CartItem.product_id == product_id,
+        )
+    ).scalar_one_or_none()
+
+
+def get_cart_summary(db: Session, user: User) -> tuple[Decimal, int]:
+    cart_items: list[CartItem] = get_cart_items(db, user)
+    total: Decimal = Decimal(0)
+    count: int = 0
     for cart_item in cart_items:
         total += cart_item.product.price * cart_item.quantity
-    return total
+        count += 1
+    return total, count
 
 
 def delete_cart(db: Session, user: User) -> None:
