@@ -1,7 +1,14 @@
 from typing import Optional, Annotated
 import uuid
 
-from pydantic import BaseModel, EmailStr, ConfigDict, field_validator, Field
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    ConfigDict,
+    field_validator,
+    Field,
+    field_serializer,
+)
 
 from ..db.enums import UserRoleType, SortDirection
 
@@ -23,7 +30,7 @@ class UserBase(BaseModel):
                 raise ValueError("Each name must contain only alphabetic characters")
         return value
 
-    @field_validator("email")
+    @field_serializer("email")
     def email_validator(cls, value: str):
         return value.lower()
 
