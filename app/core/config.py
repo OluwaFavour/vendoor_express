@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     admin_name: str = "Admin User"
     admin_email: str
     admin_password: str
+    twilio_account_sid: str
+    twilio_auth_token: str
+    twilio_phone_number: str
 
     model_config = SettingsConfigDict(env_file=".env")
 

@@ -6,7 +6,7 @@ import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.requests import Request
 from sqlalchemy.orm import Session
-
+from twilio.rest import Client
 
 from .core.config import settings
 from .core.debug import logger
@@ -14,6 +14,15 @@ from .crud import session as session_crud, user as user_crud
 from .db.enums import UserRoleType, VendorStatusType
 from .db.models import User
 from .db.session import SessionLocal
+
+
+def get_twilio_client():
+    """Manage the Twilio client by creating a new client for each request"""
+    twilio_client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+    try:
+        yield twilio_client
+    finally:
+        pass
 
 
 def get_smtp():

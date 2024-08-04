@@ -4,6 +4,7 @@ from jinja2 import FileSystemLoader, Environment
 import jwt
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import secrets
 from smtplib import (
     SMTP,
     SMTPRecipientsRefused,
@@ -17,6 +18,7 @@ from cloudinary.uploader import upload
 from cloudinary.api import delete_resources_by_prefix, delete_folder
 from fastapi import HTTPException, status, Depends, Request
 from sqlalchemy.orm import Session
+from twilio.rest import Client
 
 from .config import settings
 from .security import verify_password, hash_password
@@ -202,4 +204,28 @@ def delete_folder_by_prefix(prefix: str) -> None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error occurred while deleting folder: {e}",
+        )
+
+
+def generate_otp() -> str:
+    return "".join(
+        secrets.choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") for _ in range(6)
+    )
+
+
+def send_sms(
+    twilio_client: Client,
+    to: str,
+    body: str,
+) -> None:
+    try:
+        twilio_client.messages.create(
+            to=to,
+            from_=settings.twilio_phone_number,
+            body=body,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error occurred while sending SMS: {e}",
         )
