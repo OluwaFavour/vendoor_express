@@ -28,7 +28,7 @@ class Option(BaseModel):
     value: str
 
     @field_serializer("name")
-    def serialize_name(cls, name):
+    def serialize_name(name):
         return name.lower()
 
 

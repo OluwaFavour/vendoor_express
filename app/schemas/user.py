@@ -31,8 +31,8 @@ class UserBase(BaseModel):
         return value
 
     @field_serializer("email")
-    def email_validator(cls, value: str):
-        return value.lower()
+    def email_validator(email: str) -> str:
+        return email.lower()
 
 
 class UserCreate(UserBase):
