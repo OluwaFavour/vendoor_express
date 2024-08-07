@@ -262,6 +262,9 @@ def send_verification_sms(
     ],
     twilio: Annotated[Client, Depends(get_twilio_client)],
 ):
+    """
+    Adds cookie to response
+    """
     otp = generate_otp()
 
     # Encode the OTP into a JWT token and store in session cookie
@@ -299,6 +302,9 @@ def send_verification_sms(
 def verify_verification_sms(
     otp: Annotated[str, Form(title="OTP", description="OTP")], request: Request
 ):
+    """
+    Gets cookie from response
+    """
     sms_otp = request.cookies.get("sms_otp")
     if sms_otp is None:
         raise HTTPException(
@@ -340,6 +346,9 @@ def send_verification_email_otp(
     email: Annotated[EmailStr, Form(title="Email", description="Email")],
     smtp: Annotated[SMTP, Depends(get_smtp)],
 ):
+    """
+    Adds cookie to the response
+    """
     otp = generate_otp()
 
     # Encode the OTP into a JWT token and store in session cookie
@@ -386,6 +395,9 @@ def send_verification_email_otp(
 def verify_email_otp(
     otp: Annotated[str, Form(title="OTP", description="OTP")], request: Request
 ):
+    """
+    Gets cookie from request
+    """
     email_otp = request.cookies.get("email_otp")
     if email_otp is None:
         raise HTTPException(
