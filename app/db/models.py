@@ -77,10 +77,10 @@ class User(Base):
     notifications: Mapped[Optional[list["Notification"]]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    saved_items: Mapped[Optional[list["SavedItem"]]] = relationship(
+    wishlist: Mapped[Optional[list["SavedItem"]]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    cart_items: Mapped[Optional[list["CartItem"]]] = relationship(
+    cart: Mapped[Optional[list["CartItem"]]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     addresses: Mapped[Optional[list["Address"]]] = relationship(
@@ -375,6 +375,10 @@ class Order(Base):
     notifications: Mapped[Optional[list["Notification"]]] = relationship(
         back_populates="order", cascade="save-update, merge, refresh-expire, expunge"
     )
+    address_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("address.id", ondelete="SET NULL")
+    )
+    shipping_address: Mapped["Address"] = relationship(back_populates="orders")
 
     @validates("payment_method")
     def validate_payment_method(self, key, value):
@@ -526,7 +530,7 @@ class SavedItem(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE")
     )
-    user: Mapped["User"] = relationship(back_populates="saved_items")
+    user: Mapped["User"] = relationship(back_populates="wishlist")
     product_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("product.id", ondelete="SET NULL")
     )
@@ -545,7 +549,7 @@ class CartItem(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE")
     )
-    user: Mapped["User"] = relationship(back_populates="cart_items")
+    user: Mapped["User"] = relationship(back_populates="cart")
 
 
 class Address(Base):
@@ -568,6 +572,10 @@ class Address(Base):
     user: Mapped["User"] = relationship(back_populates="addresses")
     default: Mapped[Optional["DefaultAddress"]] = relationship(
         back_populates="address", cascade="save-update, merge, refresh-expire, expunge"
+    )
+    orders: Mapped[Optional[list["Order"]]] = relationship(
+        back_populates="shipping_address",
+        cascade="save-update, merge, refresh-expire, expunge",
     )
 
 

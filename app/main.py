@@ -4,7 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 
 from .db.init_db import init_db
-from .api import users, auth, shop, admin, products, cart, address
+from .api import users, auth, shop, admin, products, cart, address, checkout
 from .core.config import settings
 from .middleware import RemoveSessionCookieMiddleware
 
@@ -53,6 +53,7 @@ app.include_router(shop.router)
 app.include_router(products.router)
 app.include_router(cart.router)
 app.include_router(address.router)
+app.include_router(checkout.router)
 
 
 @app.head("/", include_in_schema=False)
