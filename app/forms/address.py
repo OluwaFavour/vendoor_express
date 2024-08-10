@@ -27,7 +27,7 @@ class AddressForm:
         postal_code: Annotated[
             Optional[str], Form(example="100001", max_length=10, min_length=5)
         ] = None,
-        set_as_default: Annotated[bool, Form()] = False,
+        is_default: Annotated[bool, Form()] = False,
     ):
         self.full_name = full_name
         self.phone_number = phone_number
@@ -36,7 +36,7 @@ class AddressForm:
         self.state = state
         self.country = country
         self.postal_code = postal_code
-        self.set_as_default = set_as_default
+        self.is_default = is_default
 
     def __call__(self):
         full_name, phone_number = AddressFormValidator(self)()
@@ -47,7 +47,7 @@ class AddressForm:
             "city": self.city,
             "state": self.state,
             "country": self.country,
-            "set_as_default": self.set_as_default,
+            "is_default": self.is_default,
         }
         if self.postal_code:
             data["postal_code"] = self.postal_code
