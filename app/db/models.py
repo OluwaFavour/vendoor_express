@@ -86,9 +86,6 @@ class User(Base):
     addresses: Mapped[Optional[list["Address"]]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    default_address: Mapped[Optional["DefaultAddress"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
-    )
     default_payment_method: Mapped[Optional["DefaultPaymentMethod"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -563,6 +560,7 @@ class Address(Base):
     state: Mapped[str] = mapped_column(nullable=False)
     country: Mapped[str] = mapped_column(nullable=False, insert_default="Nigeria")
     postal_code: Mapped[Optional[str]] = mapped_column(nullable=True)
+    is_default: Mapped[bool] = mapped_column(nullable=False, insert_default=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
     )
@@ -570,24 +568,7 @@ class Address(Base):
         ForeignKey("user.id", ondelete="CASCADE")
     )
     user: Mapped["User"] = relationship(back_populates="addresses")
-    default: Mapped[Optional["DefaultAddress"]] = relationship(
-        back_populates="address", cascade="save-update, merge, refresh-expire, expunge"
-    )
     orders: Mapped[Optional[list["Order"]]] = relationship(
         back_populates="shipping_address",
         cascade="save-update, merge, refresh-expire, expunge",
     )
-
-
-class DefaultAddress(Base):
-    __tablename__ = "default_address"
-
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
-    address_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("address.id", ondelete="CASCADE")
-    )
-    address: Mapped["Address"] = relationship(back_populates="default")
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("user.id", ondelete="CASCADE")
-    )
-    user: Mapped["User"] = relationship(back_populates="default_address")
