@@ -22,11 +22,18 @@ from twilio.rest import Client
 
 from .config import settings
 from .security import verify_password, hash_password
-from ..crud import session as session_crud, user as user_crud
-from ..db.models import User
+from ..crud import (
+    session as session_crud,
+    user as user_crud,
+    card as card_crud,
+    order as order_crud,
+)
+from ..db.enums import PaymentMethodType
+from ..db.models import User, Card
 from ..dependencies import get_db
 from ..forms.auth import LoginForm
 from ..schemas.user import UserCreate
+from ..schemas.checkout import Order as OrderSchema, PaystackInitializationResponse
 
 
 def authenticate(
@@ -229,3 +236,131 @@ def send_sms(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error occurred while sending SMS: {e}",
         )
+
+
+def validate_card(
+    db: Session, card_id: Optional[uuid.UUID], user: User
+) -> Optional[Card]:
+    if card_id:
+        card = card_crud.get_card_by_id(db, card_id)
+        if not card:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Card not found."
+            )
+        if card.user_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to use this card.",
+            )
+        return card
+    return None
+
+
+def validate_payment_method(payment_method: PaymentMethodType):
+    if payment_method in [
+        PaymentMethodType.PAYMENT_ON_DELIVERY,
+        PaymentMethodType.BANK_TRANSFER,
+    ]:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=f"{payment_method.value} is not supported yet.",
+        )
+
+
+def generate_reference(user: User) -> str:
+    order_count = user.orders.count() + 1
+    current_date = datetime.date.today()
+    return f"{current_date.year}{current_date.month:02d}{current_date.day:02d}-{order_count}"
+
+
+def process_paystack_response(
+    db: Session,
+    user: User,
+    paystack_response: dict[str, Any],
+    card_id: Optional[uuid.UUID],
+    address_id: uuid.UUID,
+    reference: str,
+) -> PaystackInitializationResponse | OrderSchema:
+    if paystack_response.get("status"):
+        data: dict[str, Any] = paystack_response.get("data", {})
+        if card_id:
+            if data.get("status") == "success":
+                order = order_crud.checkout(
+                    db,
+                    user,
+                    PaymentMethodType.CARD,
+                    data.get("id"),
+                    card_id,
+                    reference,
+                    address_id,
+                )
+                return order
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=data.get(
+                        "gateway_response",
+                        "An error occurred while processing your payment.",
+                    ),
+                )
+        else:
+            if data.get("status") == "success":
+                response = PaystackInitializationResponse(
+                    message=paystack_response.get("message"),
+                    authorization_url=data.get("authorization_url"),
+                )
+                return response
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=data.get(
+                        "gateway_response",
+                        "An error occurred while processing your payment.",
+                    ),
+                )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=paystack_response.get(
+                "message", "An error occurred while processing your payment."
+            ),
+        )
+
+
+def process_verification(
+    db: Session, user: User, paystack_response: dict[str, Any]
+) -> OrderSchema:
+    data: dict[str, Any] = paystack_response.get("data")
+    transaction_id = data.get("id")
+    order_number = data.get("reference")
+    address_id = uuid.UUID(data.get("metadata", {}).get("address_id"))
+    email: str = data.get("customer", {}).get("email")
+    authorization: dict[str, Any] = data.get("authorization", {})
+    signature: str = authorization.get("signature")
+    channel: str = authorization.get("channel")
+
+    if channel == "card":
+        card = Card(
+            signature=signature,
+            bin=authorization.get("bin"),
+            last_four=authorization.get("last4"),
+            exp_month=authorization.get("exp_month"),
+            exp_year=authorization.get("exp_year"),
+            country_code=authorization.get("country_code"),
+            brand=authorization.get("brand"),
+            authorization_code=authorization.get("authorization_code"),
+            authorization_email=email,
+            bank=authorization.get("bank"),
+        )
+        card = card_crud.create_card(db, card)
+
+    order = order_crud.checkout(
+        db,
+        user,
+        PaymentMethodType.CARD,
+        transaction_id,
+        card.id if channel == "card" else None,
+        order_number,
+        address_id,
+    )
+    return order

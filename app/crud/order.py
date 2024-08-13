@@ -1,4 +1,3 @@
-from datetime import date
 from typing import Optional
 from uuid import UUID
 
@@ -7,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..db.enums import PaymentMethodType
 from ..db.models import Order, OrderItem, User
+from .cart import get_cart_summary
 
 
 def create_order_item(
@@ -24,16 +24,16 @@ def create_order(
     user: User,
     payment_method: PaymentMethodType,
     payment_intent_id: Optional[UUID],
+    paystack_transaction_id: Optional[int],
+    order_number: str,
     address_id: UUID,
 ) -> Order:
-    order_count = user.orders.count() + 1
-    current_date = date.today()
-    order_number = f"{current_date.year}{current_date.month:02d}{current_date.day:02d}-{order_count}"
     order = Order(
         user=user,
         payment_method=payment_method.value,
         address_id=address_id,
         order_number=order_number,
+        paystack_transaction_id=paystack_transaction_id,
     )
     db.add(order)
     if payment_method == PaymentMethodType.PAYMENT_ON_DELIVERY:
@@ -51,10 +51,22 @@ def checkout(
     db: Session,
     user: User,
     payment_method: PaymentMethodType,
+    paystack_transaction_id: Optional[int],
     payment_intent_id: Optional[UUID],
+    order_number: str,
     address_id: UUID,
 ) -> Order:
-    order = create_order(db, user, payment_method, payment_intent_id, address_id)
+    order = create_order(
+        db,
+        user,
+        payment_method,
+        payment_intent_id,
+        paystack_transaction_id,
+        order_number,
+        address_id,
+    )
+    total_amount, _ = get_cart_summary(db, user)
+    order.total_amount = total_amount
     for cart_item in user.cart:
         create_order_item(db, order.id, cart_item.product_id, cart_item.quantity)
     user.cart.clear()

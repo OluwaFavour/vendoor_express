@@ -10,10 +10,20 @@ from twilio.rest import Client
 
 from .core.config import settings
 from .core.debug import logger
+from .core.paystack import Paystack
 from .crud import session as session_crud, user as user_crud
 from .db.enums import UserRoleType, VendorStatusType
 from .db.models import User
 from .db.session import SessionLocal
+
+
+def get_paystack_client():
+    """Manage the Paystack client by creating a new client for each request"""
+    paystack_client = Paystack()
+    try:
+        yield paystack_client
+    finally:
+        pass
 
 
 def get_twilio_client():

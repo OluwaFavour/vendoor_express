@@ -1,7 +1,8 @@
+from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 from ..db.enums import PaymentMethodType, OrderStatusType
 from ..db.models import Order, User, OrderItem
@@ -28,6 +29,7 @@ class OrderBase(BaseModel):
         ]
     )
     address_id: UUID
+    total_amount: Decimal
     bank_id: Optional[UUID]
     card_id: Optional[UUID]
 
@@ -37,4 +39,8 @@ class Order(OrderBase):
     id: UUID
     user_id: UUID
     order_number: str
-    status: str = OrderStatusType.PENDING.value
+
+
+class PaystackInitializationResponse(BaseModel):
+    message: str
+    authorization_url: HttpUrl

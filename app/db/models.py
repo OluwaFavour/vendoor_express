@@ -349,7 +349,11 @@ class Order(Base):
     __tablename__ = "order"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
+    paystack_transaction_id: Mapped[Optional[int]] = mapped_column(nullable=True)
     order_number: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
+    total_amount: Mapped[decimal.Decimal] = mapped_column(
+        nullable=False, index=True, insert_default=decimal.Decimal(0)
+    )
     payment_method: Mapped[str] = mapped_column(nullable=False, index=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
@@ -420,11 +424,18 @@ class Card(Base):
     __tablename__ = "card"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(nullable=False)
-    hashed_number: Mapped[str] = mapped_column(nullable=False)
+    signature: Mapped[str] = mapped_column(nullable=False, index=True)
+    authorization_code: Mapped[str] = mapped_column(nullable=False)
+    authorization_email: Mapped[str] = mapped_column(nullable=False)
+    bin: Mapped[str] = mapped_column(nullable=False)
     last_four: Mapped[str] = mapped_column(nullable=False)
-    expiry_date: Mapped[datetime.date] = mapped_column(nullable=False, index=True)
-    hashed_cvv: Mapped[str] = mapped_column(nullable=False)
+    exp_month: Mapped[str] = mapped_column(
+        CheckConstraint("exp_month <= 12 AND exp_month > 0"), nullable=False
+    )
+    exp_year: Mapped[str] = mapped_column(nullable=False)
+    bank: Mapped[str] = mapped_column(nullable=False)
+    country_code: Mapped[str] = mapped_column(nullable=False)
+    brand: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
     )
@@ -474,6 +485,7 @@ class Bank(Base):
     __tablename__ = "bank"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
+    signature: Mapped[str] = mapped_column(nullable=False, index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE")
     )
