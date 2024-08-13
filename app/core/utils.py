@@ -29,7 +29,7 @@ from ..crud import (
     order as order_crud,
 )
 from ..db.enums import PaymentMethodType, PaymentStatus
-from ..db.models import User, Card, Bank
+from ..db.models import User, Card
 from ..dependencies import get_db
 from ..forms.auth import LoginForm
 from ..schemas.user import UserCreate
