@@ -2,7 +2,15 @@ import datetime, uuid, decimal
 from typing import Optional
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship, validates
-from sqlalchemy import ForeignKey, func, SmallInteger, CheckConstraint, Column, Table
+from sqlalchemy import (
+    ForeignKey,
+    func,
+    SmallInteger,
+    CheckConstraint,
+    Column,
+    Table,
+    Enum,
+)
 
 from .base import Base
 from .enums import (
@@ -14,6 +22,7 @@ from .enums import (
     NotificationType,
     WantedHelpType,
     VendorStatusType,
+    PaymentStatus,
 )
 
 user_followed_shops = Table(
@@ -86,13 +95,7 @@ class User(Base):
     addresses: Mapped[Optional[list["Address"]]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    default_payment_method: Mapped[Optional["DefaultPaymentMethod"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
-    )
     cards: Mapped[Optional[list["Card"]]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
-    )
-    banks: Mapped[Optional[list["Bank"]]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -354,6 +357,11 @@ class Order(Base):
     total_amount: Mapped[decimal.Decimal] = mapped_column(
         nullable=False, index=True, insert_default=decimal.Decimal(0)
     )
+    payment_status: Mapped[str] = mapped_column(
+        nullable=False,
+        index=True,
+        insert_default=PaymentStatus.PENDING.value,
+    )
     payment_method: Mapped[str] = mapped_column(nullable=False, index=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
@@ -366,10 +374,6 @@ class Order(Base):
         ForeignKey("card.id", ondelete="SET NULL")
     )
     card: Mapped[Optional["Card"]] = relationship(back_populates="orders")
-    bank_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        ForeignKey("bank.id", ondelete="SET NULL")
-    )
-    bank: Mapped[Optional["Bank"]] = relationship(back_populates="orders")
     items: Mapped[list["OrderItem"]] = relationship(
         back_populates="order", cascade="all, delete-orphan"
     )
@@ -424,7 +428,7 @@ class Card(Base):
     __tablename__ = "card"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
-    signature: Mapped[str] = mapped_column(nullable=False, index=True)
+    signature: Mapped[str] = mapped_column(nullable=True, index=True)
     authorization_code: Mapped[str] = mapped_column(nullable=False)
     authorization_email: Mapped[str] = mapped_column(nullable=False)
     bin: Mapped[str] = mapped_column(nullable=False)
@@ -436,6 +440,8 @@ class Card(Base):
     bank: Mapped[str] = mapped_column(nullable=False)
     country_code: Mapped[str] = mapped_column(nullable=False)
     brand: Mapped[str] = mapped_column(nullable=False)
+    reusable: Mapped[bool] = mapped_column(nullable=False, insert_default=False)
+    is_default: Mapped[bool] = mapped_column(nullable=False, insert_default=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         nullable=False, insert_default=func.now(), index=True
     )
@@ -446,56 +452,6 @@ class Card(Base):
 
     orders: Mapped[Optional[list["Order"]]] = relationship(
         back_populates="card", cascade="save-update, merge, refresh-expire, expunge"
-    )
-    default: Mapped[Optional["DefaultPaymentMethod"]] = relationship(
-        back_populates="card", cascade="save-update, merge, refresh-expire, expunge"
-    )
-
-
-class DefaultPaymentMethod(Base):
-    __tablename__ = "default_payment_method"
-
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
-    payment_method: Mapped[str] = mapped_column(nullable=False, index=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("user.id", ondelete="CASCADE")
-    )
-    user: Mapped["User"] = relationship(back_populates="default_payment_method")
-    bank_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        ForeignKey("bank.id", ondelete="SET NULL")
-    )
-    bank: Mapped[Optional["Bank"]] = relationship(back_populates="default")
-    card_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        ForeignKey("card.id", ondelete="SET NULL")
-    )
-    card: Mapped[Optional["Card"]] = relationship(back_populates="default")
-
-    @validates("payment_method")
-    def validate_payment_method(self, key, value):
-        if value:
-            for enum in PaymentMethodType:
-                if value == enum.value:
-                    return value
-            raise ValueError(f"Invalid value for {key}: {value}")
-        return value
-
-
-class Bank(Base):
-    # TODO: Add more columns
-    __tablename__ = "bank"
-
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, insert_default=uuid.uuid4)
-    signature: Mapped[str] = mapped_column(nullable=False, index=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("user.id", ondelete="CASCADE")
-    )
-    user: Mapped["User"] = relationship(back_populates="banks")
-
-    orders: Mapped[Optional[list["Order"]]] = relationship(
-        back_populates="bank", cascade="save-update, merge, refresh-expire, expunge"
-    )
-    default: Mapped[Optional["DefaultPaymentMethod"]] = relationship(
-        back_populates="bank", cascade="save-update, merge, refresh-expire, expunge"
     )
 
 

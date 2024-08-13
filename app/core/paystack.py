@@ -52,7 +52,7 @@ class Paystack:
             HTTPError: If an error occurs while making the API request.
 
         """
-        possible_extra_kwargs = ["callback_url", "currency", "metadata"]
+        possible_extra_kwargs = ["callback_url", "currency", "metadata", "channels"]
         if not all(kwarg in possible_extra_kwargs for kwarg in kwargs):
             raise ValueError("Invalid keyword argument")
         url = f"{self.base_url}/transaction/initialize"
@@ -100,7 +100,12 @@ class Paystack:
         return response.json()
 
     def charge_authorization(
-        self, authorization_code: str, email: str, amount: int, reference: str
+        self,
+        authorization_code: str,
+        email: str,
+        amount: int,
+        reference: str,
+        channels: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         """
         Charges a customer's authorization for a specified amount.
@@ -124,6 +129,8 @@ class Paystack:
             "amount": amount,
             "reference": reference,
         }
+        if channels:
+            data["channels"] = channels
         response = requests.post(url, headers=self.headers, json=data)
         response.raise_for_status()
         return response.json()

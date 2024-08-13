@@ -1,3 +1,4 @@
+import subprocess
 from rich import print
 from typing import Annotated, Optional
 
@@ -38,6 +39,24 @@ def create_admin(
     )
     create_user(db, user)
     print(f"Admin user {email} created successfully")
+
+
+@cli.command()
+def run_alembic(comment: Annotated[str, typer.Argument()] = "auto"):
+    """
+    Run Alembic migrations
+    """
+    try:
+        revision_command = f"alembic revision --autogenerate -m {comment}"
+        print(f"Running Alembic migrations: {revision_command}")
+        subprocess.run(revision_command, shell=True, check=True)
+        upgrade_command = "alembic upgrade head"
+        print(f"Running Alembic upgrade: {upgrade_command}")
+        subprocess.run(upgrade_command, shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"[red]Error:[/red] {e}")
+        return
+    print("[green]Migration complete[/green]")
 
 
 if __name__ == "__main__":

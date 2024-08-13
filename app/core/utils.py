@@ -28,8 +28,8 @@ from ..crud import (
     card as card_crud,
     order as order_crud,
 )
-from ..db.enums import PaymentMethodType
-from ..db.models import User, Card
+from ..db.enums import PaymentMethodType, PaymentStatus
+from ..db.models import User, Card, Bank
 from ..dependencies import get_db
 from ..forms.auth import LoginForm
 from ..schemas.user import UserCreate
@@ -252,6 +252,11 @@ def validate_card(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to use this card.",
             )
+        if not card.reusable:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This card is not reusable.",
+            )
         return card
     return None
 
@@ -293,6 +298,7 @@ def process_paystack_response(
                     card_id,
                     reference,
                     address_id,
+                    payment_status=PaymentStatus.SUCCESSFUL,
                 )
                 return order
             else:
@@ -334,12 +340,18 @@ def process_verification(
     transaction_id = data.get("id")
     order_number = data.get("reference")
     address_id = uuid.UUID(data.get("metadata", {}).get("address_id"))
+    make_default = data.get("metadata", {}).get("make_default")
     email: str = data.get("customer", {}).get("email")
     authorization: dict[str, Any] = data.get("authorization", {})
     signature: str = authorization.get("signature")
     channel: str = authorization.get("channel")
 
     if channel == "card":
+        # Remove old default card if required
+        if make_default:
+            card_crud.remove_default_card(db, user.id)
+
+        # Create new card
         card = Card(
             signature=signature,
             bin=authorization.get("bin"),
@@ -351,16 +363,30 @@ def process_verification(
             authorization_code=authorization.get("authorization_code"),
             authorization_email=email,
             bank=authorization.get("bank"),
+            reusable=authorization.get("reusable"),
+            is_default=make_default,
         )
         card = card_crud.create_card(db, card)
 
-    order = order_crud.checkout(
-        db,
-        user,
-        PaymentMethodType.CARD,
-        transaction_id,
-        card.id if channel == "card" else None,
-        order_number,
-        address_id,
-    )
+        order = order_crud.checkout(
+            db,
+            user,
+            PaymentMethodType.CARD,
+            transaction_id,
+            card.id,
+            order_number,
+            address_id,
+            payment_status=PaymentStatus.SUCCESSFUL,
+        )
+    elif channel == "bank_transfer":
+        order = order_crud.checkout(
+            db=db,
+            user=user,
+            address_id=address_id,
+            payment_method=PaymentMethodType.BANK_TRANSFER,
+            payment_intent_id=None,
+            paystack_transaction_id=None,
+            order_number=order_number,
+            payment_status=PaymentStatus.SUCCESSFUL,
+        )
     return order

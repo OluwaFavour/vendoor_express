@@ -30,7 +30,6 @@ class OrderBase(BaseModel):
     )
     address_id: UUID
     total_amount: Decimal
-    bank_id: Optional[UUID]
     card_id: Optional[UUID]
 
 

@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 
-from ..db.enums import PaymentMethodType
+from ..db.enums import PaymentMethodType, PaymentStatus
 from ..db.models import Order, OrderItem, User
 from .cart import get_cart_summary
 
@@ -27,6 +27,7 @@ def create_order(
     paystack_transaction_id: Optional[int],
     order_number: str,
     address_id: UUID,
+    payment_status: PaymentStatus = PaymentStatus.PENDING,
 ) -> Order:
     order = Order(
         user=user,
@@ -34,12 +35,11 @@ def create_order(
         address_id=address_id,
         order_number=order_number,
         paystack_transaction_id=paystack_transaction_id,
+        payment_status=payment_status.value,
     )
     db.add(order)
-    if payment_method == PaymentMethodType.PAYMENT_ON_DELIVERY:
+    if payment_method in [PaymentMethodType.CARD, PaymentMethodType.BANK_TRANSFER]:
         pass
-    elif payment_method == PaymentMethodType.BANK_TRANSFER:
-        order.bank_id = payment_intent_id
     else:
         order.card_id = payment_intent_id
     db.commit()
@@ -55,6 +55,7 @@ def checkout(
     payment_intent_id: Optional[UUID],
     order_number: str,
     address_id: UUID,
+    payment_status: PaymentStatus = PaymentStatus.PENDING,
 ) -> Order:
     order = create_order(
         db,
@@ -64,6 +65,7 @@ def checkout(
         paystack_transaction_id,
         order_number,
         address_id,
+        payment_status,
     )
     total_amount, _ = get_cart_summary(db, user)
     order.total_amount = total_amount

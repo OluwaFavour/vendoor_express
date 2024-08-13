@@ -68,3 +68,10 @@ class VendorStatusType(str, Enum):
     SUSPENDED = "suspended"
     REJECTED = "rejected"
     DELETED = "deleted"
+
+
+class PaymentStatus(str, Enum):
+    PENDING = "pending"
+    SUCCESSFUL = "successful"
+    FAILED = "failed"
+    REFUNDED = "refunded"
