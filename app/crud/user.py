@@ -41,7 +41,7 @@ def create_user(db: Session, user: UserCreate) -> UserModel:
 
 
 def get_all_users(db: Session, **filters) -> list[UserModel]:
-    possible_filters = ["role", "is_active", "is_shop_owner", "search_query"]
+    possible_filters = {"role", "is_active", "is_shop_owner", "search_query"}
     invalid_filters = set(filters.keys()) - possible_filters
     if invalid_filters:
         raise ValueError(f"Invalid filters: {invalid_filters}")

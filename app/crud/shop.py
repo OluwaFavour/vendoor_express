@@ -178,7 +178,7 @@ def get_all_shops(db: Session, **filters) -> list[Shop]:
     Raises:
         ValueError: If any of the provided filters are invalid.
     """
-    possible_filters = ["status", "type", "category", "name"]
+    possible_filters = {"status", "type", "category", "name"}
     invalid_filters = set(filters.keys()) - possible_filters
     if invalid_filters:
         raise ValueError(f"Invalid filters: {invalid_filters}")
