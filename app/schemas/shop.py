@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, HttpUrl
 from typing import Optional
+from datetime import datetime
 import uuid
 
 from .user import User
@@ -19,6 +20,7 @@ class Shop(BaseModel):
     logo: HttpUrl
     status: str
     vendor: User
+    created_at: datetime
 
 
 class ShopPage(BaseModel):
