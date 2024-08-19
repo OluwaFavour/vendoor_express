@@ -6,6 +6,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 
 from ..db.models import User as UserModel
+from ..db.enums import UserRoleType
 from ..core.security import hash_password
 from ..schemas.user import UserCreate
 
@@ -37,3 +38,30 @@ def create_user(db: Session, user: UserCreate) -> UserModel:
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+def get_all_users(db: Session, **filters) -> list[UserModel]:
+    possible_filters = ["role", "is_active", "is_shop_owner", "search_query"]
+    invalid_filters = set(filters.keys()) - possible_filters
+    if invalid_filters:
+        raise ValueError(f"Invalid filters: {invalid_filters}")
+
+    query = select(UserModel)
+
+    for filter_key, value in filters.items():
+        if filter_key == "search_query":
+            query = query.filter(
+                UserModel.full_name.ilike(f"%{value}%")
+                | UserModel.email.ilike(f"%{value}%")
+                | UserModel.phone_number.ilike(f"%{value}%")
+            )
+        elif filter_key == "role":
+            if value not in UserRoleType.__members__:
+                raise ValueError(f"Invalid role: {value}")
+            query = query.filter(UserModel.role == value)
+        elif filter_key == "is_active":
+            query = query.filter(UserModel.is_active == value)
+        elif filter_key == "is_shop_owner":
+            query = query.filter(UserModel.is_shop_owner == value)
+
+    return db.execute(query).scalars().all()

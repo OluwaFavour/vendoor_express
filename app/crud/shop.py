@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from ..core.utils import upload_image
 from ..core.debug import logger
 from ..crud.user import update_user
-from ..db.enums import UserRoleType, ProofOfIdentityType
+from ..db.enums import UserRoleType, ProofOfIdentityType, VendorStatusType, ShopType
 from ..db.models import User, Shop, ShopMember, Product
 from ..forms.shop import VendorProfileCreationForm
 
@@ -165,3 +165,38 @@ def update_shop_staff(db: Session, staff: ShopMember, **kwargs) -> ShopMember:
     db.execute(update(ShopMember).filter_by(id=staff.id).values(**values))
     db.commit()
     return staff
+
+
+def get_all_shops(db: Session, **filters) -> list[Shop]:
+    """
+    Retrieve all shops from the database based on the provided filters.
+    Args:
+        db (Session): The database session.
+        **filters: Additional filters to apply when querying the shops. Possible filters include "status", "type", "category", and "name".
+    Returns:
+        list[Shop]: A list of Shop objects that match the provided filters.
+    Raises:
+        ValueError: If any of the provided filters are invalid.
+    """
+    possible_filters = ["status", "type", "category", "name"]
+    invalid_filters = set(filters.keys()) - possible_filters
+    if invalid_filters:
+        raise ValueError(f"Invalid filters: {invalid_filters}")
+
+    query = select(Shop)
+
+    for filter_key, value in filters.items():
+        if filter_key == "status":
+            if value not in VendorStatusType.__members__:
+                raise ValueError(f"Invalid status: {value}")
+            query = query.filter(Shop.status == value)
+        elif filter_key == "type":
+            if value not in ShopType.__members__:
+                raise ValueError(f"Invalid type: {value}")
+            query = query.filter(Shop.type == value)
+        elif filter_key == "category":
+            query = query.filter(Shop.category == value)
+        elif filter_key == "name":
+            query = query.filter(Shop.name.ilike(f"%{value}%"))
+
+    return db.execute(query).scalars().all()

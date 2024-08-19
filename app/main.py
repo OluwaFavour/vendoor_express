@@ -1,7 +1,10 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from contextlib import asynccontextmanager
+
+from fastapi_pagination import add_pagination
 
 from .db.init_db import init_db
 from .api import users, auth, shop, admin, products, cart, address, checkout
@@ -23,6 +26,9 @@ app = FastAPI(
     redoc_url="/api/redoc",
     debug=settings.debug,
 )
+
+# Add pagination
+add_pagination(app)
 
 # ADD MIDDLEWARES
 ## ADD SESSION MIDDLEWARE
