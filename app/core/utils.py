@@ -167,7 +167,7 @@ def send_verification_email(user_scheme: UserCreate, smtp: SMTP, request: Reques
     token = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
     # Send email
-    verification_link = f"{request.base_url}api/users/verify-email?token={token}"
+    verification_link = f"{settings.frontend_url}/email/verify?token={token}"
     plain_text = f"Click the link to verify your email: {verification_link}"
     html_text = get_html_from_template(
         "email_verification.html",

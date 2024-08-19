@@ -4,7 +4,7 @@ from smtplib import SMTP
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -57,7 +57,7 @@ def send_verification_email(
 
 @router.get(
     "/verify-email",
-    status_code=status.HTTP_308_PERMANENT_REDIRECT,
+    status_code=status.HTTP_200_OK,
     summary="Verify user email",
     description="Verify user email, and redirect to frontend",
 )
@@ -93,9 +93,9 @@ def verify_user_email(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid token",
         )
-    return RedirectResponse(
-        url=f"{settings.frontend_url}/email/verify",
-        status_code=status.HTTP_308_PERMANENT_REDIRECT,
+    return JSONResponse(
+        content={"message": "Email verified successfully"},
+        status_code=status.HTTP_200_OK,
     )
 
 
