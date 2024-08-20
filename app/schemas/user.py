@@ -64,6 +64,9 @@ class User(UserBase):
 
     id: uuid.UUID
     is_active: bool
+    proof_of_identity_type: str
+    proof_of_identity_image: str
+    business_registration_certificate_image: str
 
 
 class UserPage(BaseModel):

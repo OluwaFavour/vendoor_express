@@ -230,16 +230,37 @@ def read_shops(
     return paginate(shops, params=Params(page_size=10))
 
 
-@router.put(
-    "/shops/{shop_id}/verify",
+@router.get(
+    "/shops/{shop_id}",
+    response_model=Shop,
     dependencies=[Depends(get_current_active_admin)],
     status_code=status.HTTP_200_OK,
-    summary="Verify a shop",
 )
-def verify_shop(
+def read_shop(shop_id: uuid.UUID, db: Annotated[Session, Depends(get_db)]) -> Shop:
+    db_shop = get_shop(db, shop_id)
+    if db_shop is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found"
+        )
+    return db_shop
+
+
+@router.put(
+    "/shops/{shop_id}/{action}",
+    dependencies=[Depends(get_current_active_admin)],
+    status_code=status.HTTP_200_OK,
+    summary="Perform an action on a shop",
+    response_model=Shop,
+)
+def perform_shop_action(
     shop_id: uuid.UUID,
+    action: VendorStatusType,
     db: Annotated[Session, Depends(get_db)],
 ):
+    if action not in VendorStatusType:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid action"
+        )
     db_shop = get_shop(db, shop_id)
     if db_shop is None:
         raise HTTPException(
@@ -251,6 +272,19 @@ def verify_shop(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Shop is already verified",
         )
-    db_shop.status = VendorStatusType.VERIFIED.value
+    if action == VendorStatusType.VERIFIED:
+        db_shop.verify()
+    elif action == VendorStatusType.REJECTED:
+        db_shop.reject()
+    elif action == VendorStatusType.SUSPENDED:
+        db_shop.suspend()
+    elif action == VendorStatusType.DELETED:
+        db_shop.delete()
+    elif action == VendorStatusType.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot set shop status to pending",
+        )
     db.commit()
+    db.refresh(db_shop)
     return db_shop

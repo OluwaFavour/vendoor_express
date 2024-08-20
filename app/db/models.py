@@ -182,6 +182,30 @@ class Shop(Base):
             raise ValueError(f"Invalid value for {key}: {value}")
         return value
 
+    def verify(self):
+        """
+        Verifies the vendor by updating the status to 'VERIFIED'.
+        """
+        self.status = VendorStatusType.VERIFIED.value
+
+    def reject(self):
+        """
+        Rejects the vendor by updating the status to 'REJECTED'.
+        """
+        self.status = VendorStatusType.REJECTED.value
+
+    def suspend(self):
+        """
+        Suspends the vendor by updating the status to 'SUSPENDED'.
+        """
+        self.status = VendorStatusType.SUSPENDED.value
+
+    def delete(self):
+        """
+        Deletes the vendor by updating the status to 'DELETED'.
+        """
+        self.status = VendorStatusType.DELETED.value
+
 
 class ShopMember(Base):
     __tablename__ = "shop_member"
