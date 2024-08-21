@@ -1,4 +1,4 @@
-from typing import Optional, Annotated
+from typing import Annotated
 import uuid
 
 from pydantic import (
@@ -64,9 +64,9 @@ class User(UserBase):
 
     id: uuid.UUID
     is_active: bool
-    proof_of_identity_type: str
-    proof_of_identity_image: str
-    business_registration_certificate_image: str
+    proof_of_identity_type: str | None = None
+    proof_of_identity_image: str | None = None
+    business_registration_certificate_image: str | None = None
 
 
 class UserPage(BaseModel):
